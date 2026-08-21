@@ -821,6 +821,13 @@ constexpr std::array qualities{
 
 **Commit:** `feat: add selectable classic waveforms`.
 
+**Estado (2026-08-21): backend/headless completada; control GUI pendiente.**
+- Caracterizadas sine, saw, square y triangle con periodicidad, rango, finitud y cambios rápidos.
+- Añadido el parámetro APVTS `waveform`, persistencia, migración de estado legacy e integración `processor -> ChordVoice -> Oscillator` sin allocations ni locks adicionales en el callback.
+- Verificación final: 16/16 tests, revisión de especificación `PASS` y revisión de calidad `APPROVED`.
+- Commit realizado: `3d39687` (`feat: automate oscillator waveform selection`).
+- `PluginEditor` no se modificó porque el target Linux actual es deliberadamente headless; el attachment visual queda pendiente de un build GUI verificable.
+
 ### Task 14: Añadir filtro low-pass
 
 **Objective:** Agregar cutoff/resonance global con actualización realtime segura.
@@ -842,6 +849,14 @@ constexpr std::array qualities{
 **GREEN:** Empezar con `juce::dsp::StateVariableTPTFilter<float>`.
 
 **Commit:** `feat: add automatable low-pass filter`.
+
+**Estado (2026-08-21): backend/headless completada; controles GUI pendientes.**
+- Creado filtro global post-synth con `juce::dsp::StateVariableTPTFilter<float>`.
+- Añadidos parámetros APVTS `cutoff` (20–20000 Hz, default 8000 Hz) y `resonance` (Q 0.1–2.0, default 0.2), persistencia y migración legacy.
+- Automatización suavizada con rampa lineal determinista de 20 ms; valores extremos/no finitos y cutoff respecto a Nyquist quedan saneados.
+- Verificación final: 24/24 tests, revisión de especificación `PASS` y revisión de calidad `APPROVED`.
+- Commit realizado: `c81230f` (`feat: add automatable low-pass filter`).
+- `PluginEditor` no se modificó por la arquitectura headless actual; los attachments visuales quedan pendientes de un build GUI verificable.
 
 ### Task 15: Añadir par estéreo detuned por nota
 
