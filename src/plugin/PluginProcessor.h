@@ -10,8 +10,26 @@
 #include "dsp/ChordVoice.h"
 #include "dsp/UiMidiQueue.h"
 #include "parameters/ParameterLayout.h"
+#include <atomic>
 
 namespace chordsynth {
+
+namespace dsp {
+
+// This private synthesiser is populated once with ChordVoice instances in the
+// processor constructor, then its voice collection remains immutable.
+class ChordSynthesiser final : public juce::Synthesiser {
+public:
+    void setWaveformForAllVoices(Waveform waveform) noexcept
+    {
+        for (auto* baseVoice : voices) {
+            jassert(dynamic_cast<ChordVoice*>(baseVoice) != nullptr);
+            static_cast<ChordVoice*>(baseVoice)->setWaveform(waveform);
+        }
+    }
+};
+
+} // namespace dsp
 
 class ChordSynthAudioProcessor : public juce::AudioProcessor {
 public:
@@ -49,9 +67,10 @@ public:
 
 private:
     static constexpr int numVoices = 16;
-    juce::Synthesiser synth;
+    dsp::ChordSynthesiser synth;
     dsp::UiMidiQueue uiMidiQueue;
     parameters::AudioProcessorValueTreeState apvts;
+    std::atomic<float>* waveformParameter{nullptr};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessor)
 };

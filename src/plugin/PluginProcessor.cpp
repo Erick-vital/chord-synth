@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "parameters/ParameterIds.h"
 #if !JUCE_HEADLESS_PLUGIN_CLIENT
 #include "PluginEditor.h"
 #endif
@@ -11,9 +12,10 @@ ChordSynthAudioProcessor::ChordSynthAudioProcessor()
       apvts(*this, nullptr, parameters::stateRootType, parameters::createParameterLayout())
 {
     synth.addSound(new dsp::ChordSound());
-    for (int i = 0; i < numVoices; ++i) {
+    for (int i = 0; i < numVoices; ++i)
         synth.addVoice(new dsp::ChordVoice());
-    }
+    waveformParameter = apvts.getRawParameterValue(parameters::ids::waveform);
+    jassert(waveformParameter != nullptr);
 }
 
 ChordSynthAudioProcessor::~ChordSynthAudioProcessor()
@@ -97,6 +99,10 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
 
     uiMidiQueue.drainTo(midiMessages, 0);
 
+    const auto rawWaveform = waveformParameter != nullptr
+        ? waveformParameter->load(std::memory_order_relaxed) : 0.0f;
+    synth.setWaveformForAllVoices(dsp::waveformFromRawChoice(rawWaveform));
+
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 }
 
@@ -129,7 +135,20 @@ void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInB
 {
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
     if (xmlState != nullptr && xmlState->hasTagName(apvts.state.getType())) {
-        apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+        auto incomingState = juce::ValueTree::fromXml(*xmlState);
+        bool hasWaveform = false;
+        for (const auto& child : incomingState)
+            hasWaveform = hasWaveform
+                || child.getProperty("id").toString() == parameters::ids::waveform;
+
+        if (!hasWaveform) {
+            juce::ValueTree waveformState{"PARAM"};
+            waveformState.setProperty("id", parameters::ids::waveform, nullptr);
+            waveformState.setProperty("value", 0.0f, nullptr);
+            incomingState.appendChild(waveformState, nullptr);
+        }
+
+        apvts.replaceState(incomingState);
     }
 }
 

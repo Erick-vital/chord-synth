@@ -29,6 +29,10 @@ void ChordVoice::prepare(double sampleRate) noexcept {
     }
 }
 
+void ChordVoice::setWaveform(Waveform waveform) noexcept {
+    osc.setWaveform(waveform);
+}
+
 void ChordVoice::startNote(
     int midiNoteNumber,
     float velocity,

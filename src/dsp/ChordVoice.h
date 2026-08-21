@@ -24,6 +24,7 @@ public:
 
     void setCurrentPlaybackSampleRate(double newRate) override;
     void prepare(double sampleRate) noexcept;
+    void setWaveform(Waveform waveform) noexcept;
 
     void renderNextBlock(
         juce::AudioBuffer<float>& outputBuffer,

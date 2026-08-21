@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 namespace chordsynth::dsp {
 
 enum class Waveform {
@@ -8,6 +10,26 @@ enum class Waveform {
     square,
     triangle
 };
+
+// APVTS choice values are represented as floats. Clamp finite values, then
+// round half up to the nearest choice; non-finite values use the sine default.
+[[nodiscard]] inline Waveform waveformFromRawChoice(float rawChoice) noexcept {
+    int choice = 0;
+    if (std::isfinite(rawChoice)) {
+        if (rawChoice >= 3.0f)
+            choice = 3;
+        else if (rawChoice > 0.0f)
+            choice = static_cast<int>(rawChoice + 0.5f);
+    }
+
+    switch (choice) {
+        case 1: return Waveform::saw;
+        case 2: return Waveform::square;
+        case 3: return Waveform::triangle;
+        case 0:
+        default: return Waveform::sine;
+    }
+}
 
 class Oscillator {
 public:

@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "dsp/Oscillator.h"
+#include <array>
 #include <cmath>
+#include <limits>
 #include <vector>
 
 using namespace chordsynth::dsp;
@@ -89,5 +91,68 @@ TEST_CASE("Oscillator renders deterministic, bounded, sample-rate-independent si
         }
         float sample88k = osc.processSample();
         REQUIRE_THAT(sample88k, WithinAbs(0.0f, 0.07f));
+    }
+}
+
+TEST_CASE("Raw waveform choices map by nearest selection with defensive clamping", "[dsp][oscillator][waveform]") {
+    REQUIRE(waveformFromRawChoice(-100.0f) == Waveform::sine);
+    REQUIRE(waveformFromRawChoice(0.49f) == Waveform::sine);
+    REQUIRE(waveformFromRawChoice(0.5f) == Waveform::saw);
+    REQUIRE(waveformFromRawChoice(2.49f) == Waveform::square);
+    REQUIRE(waveformFromRawChoice(2.5f) == Waveform::triangle);
+    REQUIRE(waveformFromRawChoice(100.0f) == Waveform::triangle);
+    REQUIRE(waveformFromRawChoice(std::numeric_limits<float>::quiet_NaN()) == Waveform::sine);
+    REQUIRE(waveformFromRawChoice(std::numeric_limits<float>::infinity()) == Waveform::sine);
+}
+
+TEST_CASE("Every oscillator waveform has its defined quarter-cycle sequence and period", "[dsp][oscillator][waveform]") {
+    struct Case { Waveform waveform; std::array<float, 4> expected; };
+    const std::array cases{
+        Case{Waveform::sine, {0.0f, 1.0f, 0.0f, -1.0f}},
+        Case{Waveform::saw, {-1.0f, -0.5f, 0.0f, 0.5f}},
+        Case{Waveform::square, {1.0f, 1.0f, -1.0f, -1.0f}},
+        Case{Waveform::triangle, {0.0f, 1.0f, 0.0f, -1.0f}},
+    };
+    for (const auto& testCase : cases) {
+        Oscillator osc;
+        osc.prepare(4.0);
+        osc.setFrequency(1.0f);
+        osc.setWaveform(testCase.waveform);
+        osc.reset();
+        for (int cycle = 0; cycle < 2; ++cycle)
+            for (const auto expected : testCase.expected)
+                REQUIRE_THAT(osc.processSample(), WithinAbs(expected, 1.0e-6f));
+    }
+}
+
+TEST_CASE("All oscillator waveforms stay bounded and finite at representative rates and frequencies", "[dsp][oscillator][waveform]") {
+    const std::array waveforms{Waveform::sine, Waveform::saw, Waveform::square, Waveform::triangle};
+    const std::array sampleRates{8000.0, 44100.0, 96000.0};
+    const std::array frequencies{0.0f, 20.0f, 440.0f, 12000.0f};
+    for (const auto waveform : waveforms) for (const auto sampleRate : sampleRates) for (const auto frequency : frequencies) {
+        Oscillator osc;
+        osc.prepare(sampleRate);
+        osc.setFrequency(frequency);
+        osc.setWaveform(waveform);
+        for (int i = 0; i < 2048; ++i) {
+            const auto sample = osc.processSample();
+            REQUIRE(std::isfinite(sample));
+            REQUIRE(sample >= -1.0f);
+            REQUIRE(sample <= 1.0f);
+        }
+    }
+}
+
+TEST_CASE("Switching oscillator waveforms never emits invalid samples", "[dsp][oscillator][waveform]") {
+    const std::array waveforms{Waveform::sine, Waveform::saw, Waveform::square, Waveform::triangle};
+    Oscillator osc;
+    osc.prepare(48000.0);
+    osc.setFrequency(997.0f);
+    for (int i = 0; i < 4096; ++i) {
+        osc.setWaveform(waveforms[static_cast<std::size_t>(i) % waveforms.size()]);
+        const auto sample = osc.processSample();
+        REQUIRE(std::isfinite(sample));
+        REQUIRE(sample >= -1.0f);
+        REQUIRE(sample <= 1.0f);
     }
 }
