@@ -66,7 +66,9 @@ add_library(chordsynth_dsp STATIC
     src/dsp/ChordVoice.h
     src/dsp/ChordVoice.cpp
     src/dsp/Oscillator.h
-    src/dsp/Oscillator.cpp)
+    src/dsp/Oscillator.cpp
+    src/dsp/UiMidiQueue.h
+    src/dsp/UiMidiQueue.cpp)
 
 target_include_directories(chordsynth_dsp PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)

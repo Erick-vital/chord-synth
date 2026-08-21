@@ -728,6 +728,16 @@ constexpr std::array qualities{
 
 **Commit:** `feat: add bounded UI-to-audio MIDI queue`.
 
+**Estado (2026-08-20): completada.**
+- Creados `src/dsp/UiMidiQueue.h`, `src/dsp/UiMidiQueue.cpp` e integrados en target `chordsynth_dsp`.
+- Integrada la cola `UiMidiQueue` en `ChordSynthAudioProcessor` (`getUiMidiQueue()`) y drenada en `processBlock`.
+- Ciclo TDD ejecutado:
+  - RED: `tests/dsp/UiMidiQueueTests.cpp` verificó tests con aserciones sobre FIFO, sample offset, saturación/overflow a 256 eventos sin allocations/bloqueos, persistencia de note-on/note-off y mezcla en el audio processor.
+  - GREEN: Implementado `UiMidiQueue` lock-free con `juce::AbstractFifo` y storage fijo en `std::array`.
+  - Verificación: 100% de tests unitarios pasaron (`ctest`).
+- Revisiones independientes de especificación y calidad de código: aprobadas (PASS / APPROVED).
+- Commit realizado: `feat: add bounded UI-to-audio MIDI queue`.
+
 ### Task 10: Construir los siete pads
 
 **Objective:** Completar la experiencia V0 de mantener un pad y oír una tríada.

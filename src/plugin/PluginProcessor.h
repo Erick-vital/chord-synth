@@ -8,6 +8,7 @@
 
 #include "dsp/ChordSound.h"
 #include "dsp/ChordVoice.h"
+#include "dsp/UiMidiQueue.h"
 
 namespace chordsynth {
 
@@ -15,6 +16,8 @@ class ChordSynthAudioProcessor : public juce::AudioProcessor {
 public:
     ChordSynthAudioProcessor();
     ~ChordSynthAudioProcessor() override;
+
+    dsp::UiMidiQueue& getUiMidiQueue() noexcept { return uiMidiQueue; }
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -45,6 +48,7 @@ public:
 private:
     static constexpr int numVoices = 16;
     juce::Synthesiser synth;
+    dsp::UiMidiQueue uiMidiQueue;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessor)
 };
