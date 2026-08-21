@@ -10,18 +10,25 @@ include(cmake/Dependencies.cmake)
 # Direct JUCE modules target without requiring system pkg-config on Linux
 set(JUCE_MODULES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/JUCE/modules")
 
-add_library(juce_framework STATIC
+# Processor-only JUCE substitute used by this repository's Linux tests.
+# Production GUI/plugin targets must use JUCE's official audio-processors module.
+add_library(chordsynth_juce_headless_test_only STATIC
     ${JUCE_MODULES_DIR}/juce_core/juce_core_CompilationTime.cpp
     ${JUCE_MODULES_DIR}/juce_core/juce_core_zlib.c
     ${JUCE_MODULES_DIR}/juce_core/juce_core.cpp
     ${JUCE_MODULES_DIR}/juce_events/juce_events.cpp
     ${JUCE_MODULES_DIR}/juce_audio_basics/juce_audio_basics.cpp
+    ${JUCE_MODULES_DIR}/juce_data_structures/juce_data_structures.cpp
+    ${JUCE_MODULES_DIR}/juce_audio_formats/juce_audio_formats.cpp
+    ${JUCE_MODULES_DIR}/juce_dsp/juce_dsp.cpp
+    src/juce/AudioProcessorValueTreeStateHeadless.cpp
     ${JUCE_MODULES_DIR}/juce_audio_processors_headless/juce_audio_processors_headless.cpp)
 
-target_include_directories(juce_framework PUBLIC
+target_include_directories(chordsynth_juce_headless_test_only PUBLIC
     ${JUCE_MODULES_DIR})
 
-target_compile_definitions(juce_framework PUBLIC
+target_compile_definitions(chordsynth_juce_headless_test_only PUBLIC
+    CHORDSYNTH_HEADLESS_APVTS_TEST_ONLY=1
     JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
     JUCE_STANDALONE_APPLICATION=0
     DONT_SET_USING_JUCE_NAMESPACE=1
@@ -45,7 +52,7 @@ target_compile_definitions(juce_framework PUBLIC
     JucePlugin_VersionCode=0x100
     JucePlugin_VersionString="0.1.0")
 
-target_compile_features(juce_framework PUBLIC cxx_std_20)
+target_compile_features(chordsynth_juce_headless_test_only PUBLIC cxx_std_20)
 
 # Music Theory Pure Library (independiente de JUCE y de hosts)
 add_library(chordsynth_music STATIC
@@ -75,9 +82,23 @@ target_include_directories(chordsynth_dsp PUBLIC
 
 target_link_libraries(chordsynth_dsp PUBLIC
     chordsynth_music
-    juce_framework)
+    chordsynth_juce_headless_test_only)
 
 target_compile_features(chordsynth_dsp PUBLIC cxx_std_20)
+
+# Parameters Library
+add_library(chordsynth_parameters STATIC
+    src/parameters/ParameterIds.h
+    src/parameters/ParameterLayout.h
+    src/parameters/ParameterLayout.cpp)
+
+target_include_directories(chordsynth_parameters PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_link_libraries(chordsynth_parameters PUBLIC
+    chordsynth_juce_headless_test_only)
+
+target_compile_features(chordsynth_parameters PUBLIC cxx_std_20)
 
 # Plugin Core Library (Processor & Editor)
 add_library(chordsynth_plugin STATIC
@@ -88,9 +109,10 @@ target_include_directories(chordsynth_plugin PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_link_libraries(chordsynth_plugin PUBLIC
+    chordsynth_parameters
     chordsynth_dsp
     chordsynth_music
-    juce_framework)
+    chordsynth_juce_headless_test_only)
 
 target_compile_features(chordsynth_plugin PUBLIC cxx_std_20)
 

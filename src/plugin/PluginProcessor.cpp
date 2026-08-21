@@ -7,7 +7,8 @@ namespace chordsynth {
 
 ChordSynthAudioProcessor::ChordSynthAudioProcessor()
     : AudioProcessor(BusesProperties()
-                         .withOutput("Output", juce::AudioChannelSet::stereo(), true))
+                         .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+      apvts(*this, nullptr, parameters::stateRootType, parameters::createParameterLayout())
 {
     synth.addSound(new dsp::ChordSound());
     for (int i = 0; i < numVoices; ++i) {
@@ -117,12 +118,19 @@ juce::AudioProcessorEditor* ChordSynthAudioProcessor::createEditor()
 #endif
 }
 
-void ChordSynthAudioProcessor::getStateInformation(juce::MemoryBlock&)
+void ChordSynthAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
 }
 
-void ChordSynthAudioProcessor::setStateInformation(const void*, int)
+void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+    if (xmlState != nullptr && xmlState->hasTagName(apvts.state.getType())) {
+        apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+    }
 }
 
 } // namespace chordsynth
