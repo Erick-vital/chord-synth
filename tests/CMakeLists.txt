@@ -5,14 +5,17 @@ add_executable(ChordSynthTests
     dsp/ChordVoiceTests.cpp
     dsp/FilterTests.cpp
     dsp/OscillatorTests.cpp
+    dsp/RenderSafetyTests.cpp
     dsp/UiMidiQueueTests.cpp
     music/MajorScaleChordMapTests.cpp
     music/NoteMathTests.cpp
     parameters/ParameterLayoutTests.cpp
-    plugin/ProcessorSmokeTests.cpp)
+    plugin/ProcessorSmokeTests.cpp
+    presets/PresetSerializerTests.cpp)
 
 target_link_libraries(ChordSynthTests PRIVATE
     chordsynth_plugin
+    chordsynth_presets
     chordsynth_parameters
     chordsynth_dsp
     chordsynth_music

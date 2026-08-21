@@ -17,9 +17,11 @@ ChordSynthAudioProcessor::ChordSynthAudioProcessor()
     waveformParameter = apvts.getRawParameterValue(parameters::ids::waveform);
     cutoffParameter = apvts.getRawParameterValue(parameters::ids::cutoff);
     resonanceParameter = apvts.getRawParameterValue(parameters::ids::resonance);
+    detuneParameter = apvts.getRawParameterValue(parameters::ids::detune);
     jassert(waveformParameter != nullptr);
     jassert(cutoffParameter != nullptr);
     jassert(resonanceParameter != nullptr);
+    jassert(detuneParameter != nullptr);
 }
 
 ChordSynthAudioProcessor::~ChordSynthAudioProcessor()
@@ -112,6 +114,10 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         ? waveformParameter->load(std::memory_order_relaxed) : 0.0f;
     synth.setWaveformForAllVoices(dsp::waveformFromRawChoice(rawWaveform));
 
+    const auto rawDetune = detuneParameter != nullptr
+        ? detuneParameter->load(std::memory_order_relaxed) : 7.0f;
+    synth.setDetuneCentsForAllVoices(rawDetune);
+
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 
     const auto rawCutoff = cutoffParameter != nullptr
@@ -149,6 +155,9 @@ void ChordSynthAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 
 void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
+    if (data == nullptr || sizeInBytes <= 0)
+        return;
+
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
     if (xmlState != nullptr && xmlState->hasTagName(apvts.state.getType())) {
         auto incomingState = juce::ValueTree::fromXml(*xmlState);
@@ -164,6 +173,7 @@ void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInB
         addDefaultIfMissing(parameters::ids::waveform, 0.0f);
         addDefaultIfMissing(parameters::ids::cutoff, 8000.0f);
         addDefaultIfMissing(parameters::ids::resonance, 0.2f);
+        addDefaultIfMissing(parameters::ids::detune, 7.0f);
 
         apvts.replaceState(incomingState);
     }

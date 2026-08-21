@@ -39,6 +39,12 @@ AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
         juce::NormalisableRange<float>{0.1f, 2.0f},
         0.2f));
 
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{ids::detune, detuneParameterVersion},
+        names::detune,
+        juce::NormalisableRange<float>{0.0f, 20.0f},
+        7.0f));
+
     return layout;
 }
 

@@ -261,3 +261,84 @@ TEST_CASE("Legacy state without filter parameters restores new defaults",
     REQUIRE(static_cast<float>(*cutoff) == Catch::Approx(8000.0f));
     REQUIRE(static_cast<float>(*resonance) == Catch::Approx(0.2f));
 }
+
+TEST_CASE("Detune parameter has stable continuous automatable contract and persists",
+          "[parameters][detune]") {
+    ChordSynthAudioProcessor processor;
+    auto& apvts = processor.getAPVTS();
+    auto* detune = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::detune));
+    REQUIRE(detune != nullptr);
+
+    const juce::AudioProcessorParameter& detuneHost = *detune;
+    REQUIRE(detune->getParameterID() == parameters::ids::detune);
+    REQUIRE(detune->getVersionHint() == parameters::detuneParameterVersion);
+    REQUIRE(detune->name == parameters::names::detune);
+    REQUIRE(detuneHost.isAutomatable());
+    REQUIRE_FALSE(detuneHost.isDiscrete());
+    REQUIRE_FALSE(detuneHost.isBoolean());
+    const auto& range = detune->getNormalisableRange();
+    REQUIRE(range.start == Catch::Approx(0.0f));
+    REQUIRE(range.end == Catch::Approx(20.0f));
+    REQUIRE(range.interval == Catch::Approx(0.0f));
+    REQUIRE(static_cast<float>(*detune) == Catch::Approx(7.0f));
+    REQUIRE(detuneHost.getDefaultValue()
+            == Catch::Approx(range.convertTo0to1(7.0f)));
+
+    *detune = 14.5f;
+    juce::MemoryBlock stateBlock;
+    processor.getStateInformation(stateBlock);
+    ChordSynthAudioProcessor restored;
+    restored.setStateInformation(stateBlock.getData(), static_cast<int>(stateBlock.getSize()));
+    auto* restoredDetune = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::detune));
+    REQUIRE(restoredDetune != nullptr);
+    REQUIRE(static_cast<float>(*restoredDetune) == Catch::Approx(14.5f));
+}
+
+TEST_CASE("Legacy state without detune parameter restores new default (7 cents)",
+          "[parameters][detune][compatibility]") {
+    ChordSynthAudioProcessor source;
+    auto legacyState = source.getAPVTS().copyState();
+    for (int index = legacyState.getNumChildren(); --index >= 0;) {
+        const auto id = legacyState.getChild(index).getProperty("id").toString();
+        if (id == parameters::ids::detune)
+            legacyState.removeChild(index, nullptr);
+    }
+    std::unique_ptr<juce::XmlElement> xml(legacyState.createXml());
+    juce::MemoryBlock block;
+    juce::AudioProcessor::copyXmlToBinary(*xml, block);
+
+    ChordSynthAudioProcessor restored;
+    auto* detune = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::detune));
+    REQUIRE(detune != nullptr);
+    *detune = 18.0f;
+    restored.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+    REQUIRE(static_cast<float>(*detune) == Catch::Approx(7.0f));
+}
+
+TEST_CASE("Processor handles malformed, null, or wrong-type state blobs safely",
+          "[parameters][robustness]") {
+    ChordSynthAudioProcessor processor;
+    auto* keyParam = dynamic_cast<juce::AudioParameterChoice*>(
+        processor.getAPVTS().getParameter(parameters::ids::key));
+    REQUIRE(keyParam != nullptr);
+    *keyParam = 3;
+
+    // 1. Null data or 0 size does not crash or corrupt
+    processor.setStateInformation(nullptr, 0);
+    REQUIRE(keyParam->getIndex() == 3);
+
+    // 2. Garbage binary data
+    const char garbage[] = "NOT_AN_XML_OR_VALID_STATE_BLOB";
+    processor.setStateInformation(garbage, sizeof(garbage));
+    REQUIRE(keyParam->getIndex() == 3);
+
+    // 3. XML with wrong root tag
+    juce::XmlElement wrongRoot("WrongRootType");
+    juce::MemoryBlock wrongBlock;
+    juce::AudioProcessor::copyXmlToBinary(wrongRoot, wrongBlock);
+    processor.setStateInformation(wrongBlock.getData(), static_cast<int>(wrongBlock.getSize()));
+    REQUIRE(keyParam->getIndex() == 3);
+}

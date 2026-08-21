@@ -24,6 +24,34 @@ std::vector<float> renderWaveformRaw(float rawWaveform) {
     return {buffer.getReadPointer(0), buffer.getReadPointer(0) + buffer.getNumSamples()};
 }
 
+TEST_CASE("Detune automation on ChordSynthAudioProcessor reaches stereo voice render", "[plugin][detune]") {
+    ChordSynthAudioProcessor processor;
+    auto* detuneParam = dynamic_cast<juce::AudioParameterFloat*>(
+        processor.getAPVTS().getParameter(parameters::ids::detune));
+    REQUIRE(detuneParam != nullptr);
+
+    *detuneParam = 12.0f;
+    processor.prepareToPlay(48000.0, 256);
+
+    juce::AudioBuffer<float> buffer(2, 256);
+    buffer.clear();
+    juce::MidiBuffer midi;
+    midi.addEvent(juce::MidiMessage::noteOn(1, 60, 0.9f), 0);
+    processor.processBlock(buffer, midi);
+
+    REQUIRE(buffer.getMagnitude(0, 0, 256) > 0.01f);
+    REQUIRE(buffer.getMagnitude(1, 0, 256) > 0.01f);
+
+    bool leftRightDiffer = false;
+    for (int i = 50; i < 256; ++i) {
+        if (std::abs(buffer.getSample(0, i) - buffer.getSample(1, i)) > 1e-4f) {
+            leftRightDiffer = true;
+            break;
+        }
+    }
+    REQUIRE(leftRightDiffer);
+}
+
 void requireFinite(const std::vector<float>& samples) {
     for (const auto sample : samples)
         REQUIRE(std::isfinite(sample));

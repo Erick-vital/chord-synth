@@ -103,6 +103,21 @@ target_link_libraries(chordsynth_parameters PUBLIC
 
 target_compile_features(chordsynth_parameters PUBLIC cxx_std_20)
 
+# Presets Library
+add_library(chordsynth_presets STATIC
+    src/presets/Preset.h
+    src/presets/PresetSerializer.h
+    src/presets/PresetSerializer.cpp)
+
+target_include_directories(chordsynth_presets PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_link_libraries(chordsynth_presets PUBLIC
+    chordsynth_parameters
+    chordsynth_juce_headless_test_only)
+
+target_compile_features(chordsynth_presets PUBLIC cxx_std_20)
+
 # Plugin Core Library (Processor & Editor)
 add_library(chordsynth_plugin STATIC
     src/plugin/PluginProcessor.h
@@ -112,6 +127,7 @@ target_include_directories(chordsynth_plugin PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_link_libraries(chordsynth_plugin PUBLIC
+    chordsynth_presets
     chordsynth_parameters
     chordsynth_dsp
     chordsynth_music

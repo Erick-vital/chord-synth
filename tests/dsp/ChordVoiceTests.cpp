@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "dsp/ChordVoice.h"
@@ -78,6 +79,62 @@ TEST_CASE("ChordVoice renders polyphonic note events with ADSR anti-click envelo
         float magLoud = bufferLoud.getMagnitude(0, 0, 512);
 
         REQUIRE(magLoud > magQuiet * 2.0f);
+    }
+
+    SECTION("Detune parameter creates stereo width with energy in both channels") {
+        juce::Synthesiser sZero;
+        sZero.addSound(new ChordSound());
+        sZero.addVoice(new ChordVoice());
+        sZero.setCurrentPlaybackSampleRate(44100.0);
+        auto* vZero = dynamic_cast<ChordVoice*>(sZero.getVoice(0));
+        REQUIRE(vZero != nullptr);
+        vZero->setDetuneCents(0.0f);
+        sZero.noteOn(1, 60, 0.8f);
+
+        juce::AudioBuffer<float> bufZero(2, 512);
+        bufZero.clear();
+        juce::MidiBuffer midi;
+        sZero.renderNextBlock(bufZero, midi, 0, 512);
+
+        // At 0 cents detune, left and right channels should be identical (centered)
+        for (int i = 0; i < 512; ++i) {
+            REQUIRE(bufZero.getSample(0, i) == Catch::Approx(bufZero.getSample(1, i)).margin(1e-5f));
+        }
+
+        juce::Synthesiser sDetuned;
+        sDetuned.addSound(new ChordSound());
+        sDetuned.addVoice(new ChordVoice());
+        sDetuned.setCurrentPlaybackSampleRate(44100.0);
+        auto* vDetuned = dynamic_cast<ChordVoice*>(sDetuned.getVoice(0));
+        REQUIRE(vDetuned != nullptr);
+        vDetuned->setDetuneCents(10.0f);
+        sDetuned.noteOn(1, 60, 0.8f);
+
+        juce::AudioBuffer<float> bufDetuned(2, 512);
+        bufDetuned.clear();
+        sDetuned.renderNextBlock(bufDetuned, midi, 0, 512);
+
+        float leftEnergy = bufDetuned.getMagnitude(0, 0, 512);
+        float rightEnergy = bufDetuned.getMagnitude(1, 0, 512);
+        REQUIRE(leftEnergy > 0.01f);
+        REQUIRE(rightEnergy > 0.01f);
+
+        // With detune > 0, left and right channels should differ over time
+        bool differenceDetected = false;
+        for (int i = 50; i < 512; ++i) {
+            if (std::abs(bufDetuned.getSample(0, i) - bufDetuned.getSample(1, i)) > 1e-3f) {
+                differenceDetected = true;
+                break;
+            }
+        }
+        REQUIRE(differenceDetected);
+
+        // Mono sum (L + R) should not cancel out (mono compatibility)
+        juce::AudioBuffer<float> monoSum(1, 512);
+        monoSum.clear();
+        monoSum.addFrom(0, 0, bufDetuned, 0, 0, 512);
+        monoSum.addFrom(0, 0, bufDetuned, 1, 0, 512);
+        REQUIRE(monoSum.getMagnitude(0, 0, 512) > 0.01f);
     }
 
     SECTION("Output buffer remains strictly finite across varied sample rates and block sizes") {

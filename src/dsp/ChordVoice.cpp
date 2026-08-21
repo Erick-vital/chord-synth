@@ -16,7 +16,8 @@ void ChordVoice::setCurrentPlaybackSampleRate(double newRate) {
 void ChordVoice::prepare(double sampleRate) noexcept {
     if (sampleRate > 0.0) {
         currentSampleRate = sampleRate;
-        osc.prepare(sampleRate);
+        oscA.prepare(sampleRate);
+        oscB.prepare(sampleRate);
         adsr.setSampleRate(sampleRate);
 
         // Initial default parameters: Attack 5ms, Decay 80ms, Sustain 0.8, Release 120ms
@@ -30,7 +31,21 @@ void ChordVoice::prepare(double sampleRate) noexcept {
 }
 
 void ChordVoice::setWaveform(Waveform waveform) noexcept {
-    osc.setWaveform(waveform);
+    oscA.setWaveform(waveform);
+    oscB.setWaveform(waveform);
+}
+
+void ChordVoice::setDetuneCents(float detuneCents) noexcept {
+    if (!std::isfinite(detuneCents)) {
+        currentDetuneCents = 0.0f;
+    } else {
+        currentDetuneCents = std::clamp(detuneCents, 0.0f, 100.0f);
+    }
+    if (currentBaseFrequencyHz > 0.0f) {
+        float factor = std::pow(2.0f, currentDetuneCents / 1200.0f);
+        oscA.setFrequency(currentBaseFrequencyHz / factor);
+        oscB.setFrequency(currentBaseFrequencyHz * factor);
+    }
 }
 
 void ChordVoice::startNote(
@@ -39,9 +54,12 @@ void ChordVoice::startNote(
     [[maybe_unused]] juce::SynthesiserSound* sound,
     [[maybe_unused]] int currentPitchWheelPosition) {
     currentVelocity = velocity;
-    float freqHz = music::midiToFrequency(midiNoteNumber);
-    osc.setFrequency(freqHz);
-    osc.reset();
+    currentBaseFrequencyHz = music::midiToFrequency(midiNoteNumber);
+    float factor = std::pow(2.0f, currentDetuneCents / 1200.0f);
+    oscA.setFrequency(currentBaseFrequencyHz / factor);
+    oscB.setFrequency(currentBaseFrequencyHz * factor);
+    oscA.reset();
+    oscB.reset();
     adsr.noteOn();
 }
 
@@ -71,11 +89,17 @@ void ChordVoice::renderNextBlock(
 
     for (int sampleIdx = 0; sampleIdx < numSamples; ++sampleIdx) {
         float envValue = adsr.getNextSample();
-        float oscValue = osc.processSample();
-        float sampleVal = oscValue * envValue * currentVelocity;
+        float sampleA = oscA.processSample() * envValue * currentVelocity * 0.5f;
+        float sampleB = oscB.processSample() * envValue * currentVelocity * 0.5f;
 
-        for (int channel = 0; channel < numChannels; ++channel) {
-            outputBuffer.addSample(channel, startSample + sampleIdx, sampleVal);
+        if (numChannels >= 2) {
+            outputBuffer.addSample(0, startSample + sampleIdx, sampleA);
+            outputBuffer.addSample(1, startSample + sampleIdx, sampleB);
+            for (int channel = 2; channel < numChannels; ++channel) {
+                outputBuffer.addSample(channel, startSample + sampleIdx, (sampleA + sampleB) * 0.5f);
+            }
+        } else if (numChannels == 1) {
+            outputBuffer.addSample(0, startSample + sampleIdx, sampleA + sampleB);
         }
 
         if (!adsr.isActive()) {

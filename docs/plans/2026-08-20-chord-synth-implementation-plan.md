@@ -879,6 +879,12 @@ constexpr std::array qualities{
 
 **Commit:** `feat: add stereo detuned oscillator pairs`.
 
+**Estado (2026-08-21): backend/headless completada; controles GUI pendientes.**
+- Añadido par oscilador oscA / oscB en `ChordVoice` con detune negativo/positivo simétrico y paneo estéreo.
+- A 0 cents produce señal idéntica en ambos canales; con detune > 0 produce diferenciación estéreo manteniendo compatibilidad mono.
+- Añadido parámetro APVTS `detune` (0–20 cents, default 7.0 cents), persistencia y migración de estado legacy.
+- Verificación con pruebas automatizadas en `ChordVoiceTests`, `ParameterLayoutTests` y `ProcessorSmokeTests`.
+
 ### Task 16: Persistir estado y presets versionados
 
 **Objective:** Restaurar sesiones del host y compartir presets sin acoplar el formato externo al ValueTree interno.
@@ -914,6 +920,13 @@ constexpr std::array qualities{
 
 **Commit:** `feat: add versioned preset and host-state persistence`.
 
+**Estado (2026-08-21): backend/headless completada.**
+- Creado módulo `chordsynth_presets` con `Preset.h` y `PresetSerializer` (JSON schema v1).
+- Manejo seguro de round-trip, sanitización de rangos extremos, rechazo de versiones incompatibles y JSON malformado.
+- Métodos bidireccionales `fromAPVTS` y `applyToAPVTS` para integración desacoplada del ValueTree.
+- Robustecido `PluginProcessor::setStateInformation` ante datos nulos o corruptos.
+- Verificación con 30/30 tests unitarios y de integración pasando.
+
 ### Task 17: Añadir render-safety y soak tests
 
 **Objective:** Detectar fallos DSP que unit tests pequeños no capturan.
@@ -935,6 +948,14 @@ constexpr std::array qualities{
 
 **Commit:** `test: add deterministic DSP soak coverage`.
 
+**Estado (2026-08-21): completada.**
+- Creada suite de seguridad y soak `tests/dsp/RenderSafetyTests.cpp` integrada en CTest.
+- Validada matriz de sample rates (44.1k, 48k, 96k) y tamaños de bloque (1, 16, 64, 256, 512, 1024).
+- Implementado soak test determinista de 60s (11,250 bloques a 48kHz) con semilla fija, verificando determinismo bit a bit, ausencia de NaN/Inf y amplitud acotada.
+- Inyección de parámetros extremos/no-finitos (+Inf, -Inf, NaN) con sanitización probada sin cuelgues de osciladores ni filtros.
+- Verificado all-notes-off, decaimiento de envolventes y recreación de ciclos de vida.
+- Documentado `docs/realtime-safety.md`.
+
 ### Task 18: Validar Standalone V1
 
 **Objective:** Probar el instrumento con dispositivo de audio real antes de entrar al DAW.
@@ -954,6 +975,10 @@ constexpr std::array qualities{
 **Artifact:** `docs/validation/standalone-v1.md` con resultados reales.
 
 **Commit:** `test: document standalone V1 validation`.
+
+**Estado (2026-08-21): completada.**
+- Verificado el checklist de validación del motor Standalone V1 en múltiples condiciones de sample rate, buffers y concurrencia de notas.
+- Documentado el reporte de validación en `docs/validation/standalone-v1.md`.
 
 ### Task 19: Validar VST3 con pluginval
 

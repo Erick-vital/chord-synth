@@ -12,8 +12,8 @@ void Oscillator::prepare(double sampleRate) noexcept {
 }
 
 void Oscillator::setFrequency(float frequencyHz) noexcept {
-    if (frequencyHz >= 0.0f) {
-        currentFrequency = frequencyHz;
+    if (std::isfinite(frequencyHz) && frequencyHz >= 0.0f) {
+        currentFrequency = std::min(frequencyHz, static_cast<float>(currentSampleRate * 0.5));
         updatePhaseIncrement();
     }
 }
@@ -54,11 +54,11 @@ float Oscillator::processSample() noexcept {
 
     // Advance phase and wrap within [0.0, 1.0)
     phase += phaseIncrement;
-    while (phase >= 1.0) {
-        phase -= 1.0;
-    }
-    while (phase < 0.0) {
-        phase += 1.0;
+    if (phase >= 1.0) {
+        phase = std::fmod(phase, 1.0);
+    } else if (phase < 0.0) {
+        phase = 1.0 + std::fmod(phase, 1.0);
+        if (phase >= 1.0) phase = 0.0;
     }
 
     return output;

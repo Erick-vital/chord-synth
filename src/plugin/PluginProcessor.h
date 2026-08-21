@@ -28,6 +28,14 @@ public:
             static_cast<ChordVoice*>(baseVoice)->setWaveform(waveform);
         }
     }
+
+    void setDetuneCentsForAllVoices(float detuneCents) noexcept
+    {
+        for (auto* baseVoice : voices) {
+            jassert(dynamic_cast<ChordVoice*>(baseVoice) != nullptr);
+            static_cast<ChordVoice*>(baseVoice)->setDetuneCents(detuneCents);
+        }
+    }
 };
 
 } // namespace dsp
@@ -75,6 +83,7 @@ private:
     std::atomic<float>* waveformParameter{nullptr};
     std::atomic<float>* cutoffParameter{nullptr};
     std::atomic<float>* resonanceParameter{nullptr};
+    std::atomic<float>* detuneParameter{nullptr};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessor)
 };
