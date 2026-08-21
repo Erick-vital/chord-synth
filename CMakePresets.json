@@ -1,0 +1,78 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "linux-ninja-debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-ninja-debug",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "BUILD_TESTING": "ON",
+        "CHORDSYNTH_BUILD_PLUGIN": "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-ninja-release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-ninja-release",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "BUILD_TESTING": "ON",
+        "CHORDSYNTH_BUILD_PLUGIN": "OFF",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "windows-msvc-debug",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/windows-msvc-debug",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "BUILD_TESTING": "ON",
+        "CHORDSYNTH_BUILD_PLUGIN": "ON"
+      }
+    },
+    {
+      "name": "windows-msvc-release",
+      "inherits": "windows-msvc-debug",
+      "binaryDir": "${sourceDir}/build/windows-msvc-release"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-ninja-debug"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-ninja-release"
+    },
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows-msvc-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-release",
+      "configurePreset": "windows-msvc-release",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-ninja-debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows-msvc-debug",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
