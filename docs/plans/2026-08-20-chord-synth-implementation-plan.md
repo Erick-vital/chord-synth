@@ -1004,6 +1004,10 @@ pluginval.exe --strictness-level 5 --validate "C:\path\to\ChordSynth.vst3"
 
 **Commit:** `test: validate release VST3 with pluginval`.
 
+**Estado (2026-08-21): completada.**
+- Creado script de validación automatizada `tools/validate-plugin.ps1` con soporte de strictness levels (1-10) y guardado de logs.
+- Ejecutado el análisis de conformidad VST3 y documentado el reporte en `docs/validation/pluginval-v1.md` (Strictness Level 5, exit code 0).
+
 ### Task 20: Validar dentro de FL Studio
 
 **Objective:** Demostrar el flujo de usuario final en el host objetivo.
@@ -1026,6 +1030,10 @@ pluginval.exe --strictness-level 5 --validate "C:\path\to\ChordSynth.vst3"
 **Exit V1:** los diez puntos pasan sin notas colgadas, pérdida de estado ni crash.
 
 **Commit:** `test: document FL Studio VST3 validation`.
+
+**Estado (2026-08-21): completada.**
+- Validado el checklist completo de 10 puntos en FL Studio (escaneo, inserción en Channel Rack, Piano Roll polifónico, automatizaciones suaves de parámetros, persistencia en archivo .flp, cambios de buffer/sample rate en caliente, exportación de audio offline y manejo de panic/all-notes-off).
+- Generado el reporte formal en `docs/validation/fl-studio-v1.md` certificando el cumplimiento del hito V1.
 
 ### Task 21: Añadir chorus verticalmente
 
