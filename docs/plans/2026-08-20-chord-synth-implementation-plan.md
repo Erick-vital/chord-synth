@@ -462,6 +462,12 @@ git commit -m "build: pin JUCE 9.0.1"
 
 **Verification:** `git submodule status` muestra el commit correspondiente a `9.0.1` sin prefijo `+`.
 
+**Estado (2026-08-20): completada.**
+- Git inicializado con commit base de documentación e identidad (`75faa5c`).
+- `.gitignore` configurado para ignorar builds, artefactos VST3, `.vs/` y temporales de IDE/CMake.
+- Submódulo `external/JUCE` fijado en tag `9.0.1` (`e18f7f506c0b96f2c738a0bcd7fe6467a5005ad8`).
+- Commit realizado: `8faecae` (`build: pin JUCE 9.0.1`).
+
 ### Task 3: Crear el target común Standalone + VST3
 
 **Objective:** Probar desde el inicio que una sola definición JUCE genera ambos formatos.
