@@ -7,19 +7,21 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(cmake/Dependencies.cmake)
 
-# Direct JUCE core/audio_basics target without requiring system pkg-config on Linux
+# Direct JUCE modules target without requiring system pkg-config on Linux
 set(JUCE_MODULES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/JUCE/modules")
 
-add_library(juce_audio_basics STATIC
+add_library(juce_framework STATIC
     ${JUCE_MODULES_DIR}/juce_core/juce_core_CompilationTime.cpp
     ${JUCE_MODULES_DIR}/juce_core/juce_core_zlib.c
     ${JUCE_MODULES_DIR}/juce_core/juce_core.cpp
-    ${JUCE_MODULES_DIR}/juce_audio_basics/juce_audio_basics.cpp)
+    ${JUCE_MODULES_DIR}/juce_events/juce_events.cpp
+    ${JUCE_MODULES_DIR}/juce_audio_basics/juce_audio_basics.cpp
+    ${JUCE_MODULES_DIR}/juce_audio_processors_headless/juce_audio_processors_headless.cpp)
 
-target_include_directories(juce_audio_basics PUBLIC
+target_include_directories(juce_framework PUBLIC
     ${JUCE_MODULES_DIR})
 
-target_compile_definitions(juce_audio_basics PUBLIC
+target_compile_definitions(juce_framework PUBLIC
     JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
     JUCE_STANDALONE_APPLICATION=0
     DONT_SET_USING_JUCE_NAMESPACE=1
@@ -27,9 +29,23 @@ target_compile_definitions(juce_audio_basics PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_LOAD_CURL_SYMBOLS_LAZILY=1
     JUCE_INCLUDE_ZLIB_CODE=1
-    JUCE_DISABLE_CAUTIOUS_PARAMETER_ID_CHECKING=1)
+    JUCE_DISABLE_CAUTIOUS_PARAMETER_ID_CHECKING=1
+    JUCE_HEADLESS_PLUGIN_CLIENT=1
+    JucePlugin_Name="ChordSynth"
+    JucePlugin_Desc="Diatonic Chord Synthesizer"
+    JucePlugin_Manufacturer="ErickEsc"
+    JucePlugin_ManufacturerCode=0x45657363
+    JucePlugin_PluginCode=0x43687331
+    JucePlugin_IsSynth=1
+    JucePlugin_WantsMidiInput=1
+    JucePlugin_ProducesMidiOutput=0
+    JucePlugin_IsMidiEffect=0
+    JucePlugin_EditorRequiresKeyboardFocus=1
+    JucePlugin_Version="0.1.0"
+    JucePlugin_VersionCode=0x100
+    JucePlugin_VersionString="0.1.0")
 
-target_compile_features(juce_audio_basics PUBLIC cxx_std_20)
+target_compile_features(juce_framework PUBLIC cxx_std_20)
 
 # Music Theory Pure Library (independiente de JUCE y de hosts)
 add_library(chordsynth_music STATIC
@@ -57,9 +73,24 @@ target_include_directories(chordsynth_dsp PUBLIC
 
 target_link_libraries(chordsynth_dsp PUBLIC
     chordsynth_music
-    juce_audio_basics)
+    juce_framework)
 
 target_compile_features(chordsynth_dsp PUBLIC cxx_std_20)
+
+# Plugin Core Library (Processor & Editor)
+add_library(chordsynth_plugin STATIC
+    src/plugin/PluginProcessor.h
+    src/plugin/PluginProcessor.cpp)
+
+target_include_directories(chordsynth_plugin PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_link_libraries(chordsynth_plugin PUBLIC
+    chordsynth_dsp
+    chordsynth_music
+    juce_framework)
+
+target_compile_features(chordsynth_plugin PUBLIC cxx_std_20)
 
 include(CTest)
 

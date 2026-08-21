@@ -5,11 +5,14 @@ add_executable(ChordSynthTests
     dsp/ChordVoiceTests.cpp
     dsp/OscillatorTests.cpp
     music/MajorScaleChordMapTests.cpp
-    music/NoteMathTests.cpp)
+    music/NoteMathTests.cpp
+    plugin/ProcessorSmokeTests.cpp)
 
 target_link_libraries(ChordSynthTests PRIVATE
-    chordsynth_music
+    chordsynth_plugin
     chordsynth_dsp
+    chordsynth_music
+    juce_framework
     Catch2::Catch2WithMain)
 
 target_include_directories(ChordSynthTests PRIVATE

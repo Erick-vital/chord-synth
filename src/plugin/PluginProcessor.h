@@ -1,6 +1,13 @@
 #pragma once
 
+#if JUCE_HEADLESS_PLUGIN_CLIENT
+#include <juce_audio_processors_headless/juce_audio_processors_headless.h>
+#else
 #include <juce_audio_processors/juce_audio_processors.h>
+#endif
+
+#include "dsp/ChordSound.h"
+#include "dsp/ChordVoice.h"
 
 namespace chordsynth {
 
@@ -36,6 +43,9 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
 
 private:
+    static constexpr int numVoices = 16;
+    juce::Synthesiser synth;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessor)
 };
 

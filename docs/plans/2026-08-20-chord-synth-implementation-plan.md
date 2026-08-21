@@ -698,6 +698,14 @@ constexpr std::array qualities{
 
 **Commit:** `feat: connect MIDI input to polyphonic processor`.
 
+**Estado (2026-08-20): completada.**
+- Modificados `src/plugin/PluginProcessor.h` y `src/plugin/PluginProcessor.cpp` para integrar 16 voces `ChordVoice` y `ChordSound` en `juce::Synthesiser`.
+- Ciclo TDD ejecutado:
+  - RED: `tests/plugin/ProcessorSmokeTests.cpp` verificó fallo con procesador sin sintetizador conectado (bloque mudo con amplitud 0.0).
+  - GREEN: Instanciadas 16 voces fijas y 1 sound en constructor; configuración de sample rate en `prepareToPlay`; renderizado mediante `synth.renderNextBlock` en `processBlock` con `ScopedNoDenormals`.
+  - Verificación: 100% de tests unitarios pasaron (`ctest`) incluyendo note-ons individuales, acordes tríadas, note-offs, polifonía a 16 notas y voice-stealing a 17 notas simultáneas.
+- Commit realizado: `feat: connect MIDI input to polyphonic processor`.
+
 ### Task 9: Crear cola acotada para eventos de la UI
 
 **Objective:** Permitir que la message thread solicite notas sin bloquear el audio thread.
