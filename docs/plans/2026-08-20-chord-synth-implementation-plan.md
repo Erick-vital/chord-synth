@@ -541,6 +541,11 @@ endif()
 4. Abrir Standalone y comprobar que la ventana carga.
 5. Commit: `build: create shared standalone and VST3 targets`.
 
+**Estado (2026-08-20): completada.**
+- Creado `CMakeLists.txt` y `CMakePresets.json` con soporte para C++20, Standalone y VST3 (`juce_add_plugin`).
+- Creados `src/plugin/PluginProcessor.h/.cpp` y `src/plugin/PluginEditor.h/.cpp` con inicialización básica de buses estéreo y UI.
+- Commit realizado: `4eed5cf` (`build: create shared standalone and VST3 targets`).
+
 ### Task 4: Integrar Catch2 y el primer test
 
 **Objective:** Tener RED/GREEN automatizado antes de producir lógica.
@@ -558,6 +563,14 @@ endif()
 4. Crear `src/music/NoteMath.h/.cpp` con conversión MIDI a Hz usando A4=440.
 5. Verificar C4 aproximadamente 261.625565 Hz y A4 exactamente 440 Hz dentro de tolerancia.
 6. Commit: `test: establish C++ test harness`.
+
+**Estado (2026-08-20): completada.**
+- Catch2 `v3.15.3` integrado mediante `FetchContent` en `cmake/Dependencies.cmake`.
+- Ciclo TDD ejecutado:
+  - RED: `NoteMathTests.cpp` con aserciones para A4 (440 Hz), C4 (~261.6256 Hz) y A3 (220 Hz); verificado fallo con stub retornando `0.0`.
+  - GREEN: Implementado `chordsynth::music::midiToFrequency` en `src/music/NoteMath.cpp`.
+  - Verificación: 100% tests pasaron en `ctest`.
+- Commit realizado: `448f33c` (`test: establish C++ test harness`).
 
 ### Task 5: Implementar el mapa diatónico mayor
 
