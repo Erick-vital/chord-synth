@@ -1,0 +1,28 @@
+# Build / IDE outputs
+build/
+bin/
+lib/
+out/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Plugin / host artifacts
+*.vst3
+*.component
+*.app
+*.exe
+*.dll
+*.pdb
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# OS generated files
+.DS_Store
+Thumbs.db
