@@ -639,6 +639,14 @@ constexpr std::array qualities{
 
 **Commit:** `feat: add deterministic sine oscillator`.
 
+**Estado (2026-08-20): completada.**
+- Creados `src/dsp/Oscillator.h`, `src/dsp/Oscillator.cpp` y añadido target estático `chordsynth_dsp`.
+- Ciclo TDD ejecutado:
+  - RED: `tests/dsp/OscillatorTests.cpp` verificó fallo inicial con stub devolviendo 0.0f.
+  - GREEN: Implementado acumulador de fase determinista normalizado [0, 1), soporte para sample rates dinámicas, generación de onda seno y formas básicas (saw, square, triangle), e independencia de sample rate sin NaN/Inf.
+  - Verificación: 100% de tests unitarios pasaron (`ctest`).
+- Commit realizado: `feat: add deterministic sine oscillator`.
+
 ### Task 7: Implementar voz con ADSR anti-click
 
 **Objective:** Convertir note-on/note-off en audio con una envolvente segura.

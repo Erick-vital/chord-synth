@@ -2,11 +2,13 @@ include(FetchContent)
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(ChordSynthTests
+    dsp/OscillatorTests.cpp
     music/MajorScaleChordMapTests.cpp
     music/NoteMathTests.cpp)
 
 target_link_libraries(ChordSynthTests PRIVATE
     chordsynth_music
+    chordsynth_dsp
     Catch2::Catch2WithMain)
 
 target_include_directories(ChordSynthTests PRIVATE

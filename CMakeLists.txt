@@ -23,6 +23,16 @@ target_include_directories(chordsynth_music PUBLIC
 
 target_compile_features(chordsynth_music PUBLIC cxx_std_20)
 
+# DSP Library (independiente de UI)
+add_library(chordsynth_dsp STATIC
+    src/dsp/Oscillator.h
+    src/dsp/Oscillator.cpp)
+
+target_include_directories(chordsynth_dsp PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_compile_features(chordsynth_dsp PUBLIC cxx_std_20)
+
 if(CHORDSYNTH_BUILD_PLUGIN)
     add_subdirectory(external/JUCE)
 
