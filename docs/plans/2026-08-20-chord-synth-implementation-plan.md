@@ -610,6 +610,14 @@ constexpr std::array qualities{
 
 **Commit:** `feat: map major keys to seven diatonic triads`.
 
+**Estado (2026-08-20): completada.**
+- Creados `src/music/Chord.h`, `src/music/MajorScaleChordMap.h` y `src/music/MajorScaleChordMap.cpp`.
+- Ciclo TDD ejecutado:
+  - RED: `tests/music/MajorScaleChordMapTests.cpp` verificó fallo inicial con stub devolviendo estructura vacía.
+  - GREEN: Implementado cálculo determinista de tríadas diatónicas en modo mayor (I, ii, iii, IV, V, vi, vii°), transposición por semitonos/octavas, etiquetas (C, Dm, Bdim, etc.) y validación de rangos MIDI 0..127.
+  - Verificación: 100% de tests unitarios pasaron (`ctest`).
+- Commit realizado: `feat: map major keys to seven diatonic triads`.
+
 ### Task 6: Crear un oscilador sample-rate-independent
 
 **Objective:** Renderizar seno estable sin NaN ni drift de fase.

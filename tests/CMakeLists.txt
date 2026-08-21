@@ -2,6 +2,7 @@ include(FetchContent)
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(ChordSynthTests
+    music/MajorScaleChordMapTests.cpp
     music/NoteMathTests.cpp)
 
 target_link_libraries(ChordSynthTests PRIVATE

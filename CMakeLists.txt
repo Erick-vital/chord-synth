@@ -12,6 +12,9 @@ option(CHORDSYNTH_BUILD_PLUGIN "Build Standalone and VST3 plugin targets" ON)
 
 # Music Theory Pure Library (independiente de JUCE y de hosts)
 add_library(chordsynth_music STATIC
+    src/music/Chord.h
+    src/music/MajorScaleChordMap.h
+    src/music/MajorScaleChordMap.cpp
     src/music/NoteMath.h
     src/music/NoteMath.cpp)
 
