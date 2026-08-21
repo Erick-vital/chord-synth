@@ -7,8 +7,29 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(cmake/Dependencies.cmake)
 
-# Si el entorno dispone de dependencias gráficas/audio de JUCE, se agrega el plugin
-option(CHORDSYNTH_BUILD_PLUGIN "Build Standalone and VST3 plugin targets" ON)
+# Direct JUCE core/audio_basics target without requiring system pkg-config on Linux
+set(JUCE_MODULES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/JUCE/modules")
+
+add_library(juce_audio_basics STATIC
+    ${JUCE_MODULES_DIR}/juce_core/juce_core_CompilationTime.cpp
+    ${JUCE_MODULES_DIR}/juce_core/juce_core_zlib.c
+    ${JUCE_MODULES_DIR}/juce_core/juce_core.cpp
+    ${JUCE_MODULES_DIR}/juce_audio_basics/juce_audio_basics.cpp)
+
+target_include_directories(juce_audio_basics PUBLIC
+    ${JUCE_MODULES_DIR})
+
+target_compile_definitions(juce_audio_basics PUBLIC
+    JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
+    JUCE_STANDALONE_APPLICATION=0
+    DONT_SET_USING_JUCE_NAMESPACE=1
+    JUCE_USE_CURL=0
+    JUCE_WEB_BROWSER=0
+    JUCE_LOAD_CURL_SYMBOLS_LAZILY=1
+    JUCE_INCLUDE_ZLIB_CODE=1
+    JUCE_DISABLE_CAUTIOUS_PARAMETER_ID_CHECKING=1)
+
+target_compile_features(juce_audio_basics PUBLIC cxx_std_20)
 
 # Music Theory Pure Library (independiente de JUCE y de hosts)
 add_library(chordsynth_music STATIC
@@ -25,56 +46,20 @@ target_compile_features(chordsynth_music PUBLIC cxx_std_20)
 
 # DSP Library (independiente de UI)
 add_library(chordsynth_dsp STATIC
+    src/dsp/ChordSound.h
+    src/dsp/ChordVoice.h
+    src/dsp/ChordVoice.cpp
     src/dsp/Oscillator.h
     src/dsp/Oscillator.cpp)
 
 target_include_directories(chordsynth_dsp PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+target_link_libraries(chordsynth_dsp PUBLIC
+    chordsynth_music
+    juce_audio_basics)
+
 target_compile_features(chordsynth_dsp PUBLIC cxx_std_20)
-
-if(CHORDSYNTH_BUILD_PLUGIN)
-    add_subdirectory(external/JUCE)
-
-    juce_add_plugin(ChordSynth
-        COMPANY_NAME "ErickEsc"
-        IS_SYNTH TRUE
-        NEEDS_MIDI_INPUT TRUE
-        NEEDS_MIDI_OUTPUT FALSE
-        IS_MIDI_EFFECT FALSE
-        EDITOR_WANTS_KEYBOARD_FOCUS TRUE
-        COPY_PLUGIN_AFTER_BUILD FALSE
-        PLUGIN_MANUFACTURER_CODE Eesc
-        PLUGIN_CODE Chs1
-        FORMATS Standalone VST3
-        PRODUCT_NAME "ChordSynth"
-        NEEDS_WEB_BROWSER FALSE
-        NEEDS_CURL FALSE)
-
-    target_sources(ChordSynth PRIVATE
-        src/plugin/PluginProcessor.cpp
-        src/plugin/PluginProcessor.h
-        src/plugin/PluginEditor.cpp
-        src/plugin/PluginEditor.h)
-
-    target_include_directories(ChordSynth PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-    target_compile_definitions(ChordSynth PUBLIC
-        JUCE_WEB_BROWSER=0
-        JUCE_USE_CURL=0
-        JUCE_VST3_CAN_REPLACE_VST2=0)
-
-    target_link_libraries(ChordSynth
-        PRIVATE
-            chordsynth_music
-            juce::juce_audio_utils
-            juce::juce_dsp
-        PUBLIC
-            juce::juce_recommended_config_flags
-            juce::juce_recommended_lto_flags
-            juce::juce_recommended_warning_flags)
-endif()
 
 include(CTest)
 

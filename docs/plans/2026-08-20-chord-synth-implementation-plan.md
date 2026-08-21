@@ -669,6 +669,14 @@ constexpr std::array qualities{
 
 **Commit:** `feat: render polyphonic synth voice with ADSR`.
 
+**Estado (2026-08-20): completada.**
+- Creados `src/dsp/ChordSound.h`, `src/dsp/ChordVoice.h` y `src/dsp/ChordVoice.cpp`.
+- Ciclo TDD ejecutado:
+  - RED: `tests/dsp/ChordVoiceTests.cpp` con aserciones sobre generación de energía tras note-on, decaimiento a silencio tras note-off, liberación de voz tras release (`!isVoiceActive()`), modulación por velocity y salida acotada sin NaN/Inf en matriz de sample rates/bloques.
+  - GREEN: Implementado `ChordVoice` integrando `Oscillator` senoidal determinista con `juce::ADSR` (attack 5ms, decay 80ms, sustain 0.8, release 120ms) y escalado por velocity.
+  - Verificación: 100% de tests unitarios pasaron (`ctest`).
+- Commit realizado: `feat: render polyphonic synth voice with ADSR`.
+
 ### Task 8: Integrar 16 voces en PluginProcessor
 
 **Objective:** Hacer que MIDI entrante produzca audio en Standalone y VST3.
