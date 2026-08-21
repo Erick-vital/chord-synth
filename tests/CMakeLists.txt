@@ -3,6 +3,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(ChordSynthTests
     dsp/ChordVoiceTests.cpp
+    dsp/FilterTests.cpp
     dsp/OscillatorTests.cpp
     dsp/UiMidiQueueTests.cpp
     music/MajorScaleChordMapTests.cpp

@@ -25,6 +25,20 @@ AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
         waveformChoices,
         0));
 
+    juce::NormalisableRange<float> cutoffRange{20.0f, 20000.0f};
+    cutoffRange.setSkewForCentre(std::sqrt(20.0f * 20000.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{ids::cutoff, cutoffParameterVersion},
+        names::cutoff,
+        cutoffRange,
+        8000.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{ids::resonance, resonanceParameterVersion},
+        names::resonance,
+        juce::NormalisableRange<float>{0.1f, 2.0f},
+        0.2f));
+
     return layout;
 }
 

@@ -29,6 +29,43 @@ void requireFinite(const std::vector<float>& samples) {
         REQUIRE(std::isfinite(sample));
 }
 
+float renderSawEnergyWithCutoff(float cutoffHz) {
+    ChordSynthAudioProcessor processor;
+    auto* waveform = dynamic_cast<juce::AudioParameterChoice*>(
+        processor.getAPVTS().getParameter(parameters::ids::waveform));
+    auto* cutoff = dynamic_cast<juce::AudioParameterFloat*>(
+        processor.getAPVTS().getParameter(parameters::ids::cutoff));
+    auto* resonance = dynamic_cast<juce::AudioParameterFloat*>(
+        processor.getAPVTS().getParameter(parameters::ids::resonance));
+    REQUIRE(waveform != nullptr);
+    REQUIRE(cutoff != nullptr);
+    REQUIRE(resonance != nullptr);
+    *waveform = 1;
+    *cutoff = cutoffHz;
+    *resonance = 0.2f;
+    processor.prepareToPlay(48000.0, 256);
+
+    juce::AudioBuffer<float> buffer(2, 256);
+    double sumSquares = 0.0;
+    int sampleCount = 0;
+    for (int block = 0; block < 36; ++block) {
+        buffer.clear();
+        juce::MidiBuffer midi;
+        if (block == 0)
+            midi.addEvent(juce::MidiMessage::noteOn(1, 84, 0.8f), 0);
+        processor.processBlock(buffer, midi);
+        if (block >= 12) {
+            for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
+                const auto value = buffer.getSample(0, sample);
+                REQUIRE(std::isfinite(value));
+                sumSquares += static_cast<double>(value) * value;
+                ++sampleCount;
+            }
+        }
+    }
+    return static_cast<float>(std::sqrt(sumSquares / sampleCount));
+}
+
 } // namespace
 
 TEST_CASE("ChordSynthAudioProcessor renders 16-voice polyphonic audio from MIDI events", "[plugin][processor]") {
@@ -98,7 +135,8 @@ TEST_CASE("ChordSynthAudioProcessor renders 16-voice polyphonic audio from MIDI 
 
         buffer.clear();
         processor.processBlock(buffer, emptyMidi);
-        REQUIRE(buffer.getMagnitude(0, 0, 512) == 0.0f);
+        // The IIR filter has a vanishing tail after the voice reaches exact silence.
+        REQUIRE(buffer.getMagnitude(0, 0, 512) < 1.0e-6f);
     }
 
     SECTION("Sixteen simultaneous notes play without crashing or invalidating output") {
@@ -206,4 +244,38 @@ TEST_CASE("Raw waveform automation is clamped and rounded to deterministic oscil
     REQUIRE(renderWaveformRaw(0.5f) == saw);
     REQUIRE(renderWaveformRaw(2.49f) == square);
     REQUIRE(renderWaveformRaw(2.5f) == triangle);
+}
+
+TEST_CASE("Processor applies the low-pass globally after deterministic synth rendering",
+          "[plugin][processor][filter]") {
+    const auto lowCutoffEnergy = renderSawEnergyWithCutoff(300.0f);
+    const auto highCutoffEnergy = renderSawEnergyWithCutoff(18000.0f);
+    REQUIRE(lowCutoffEnergy > 0.0f);
+    REQUIRE(highCutoffEnergy > lowCutoffEnergy * 3.0f);
+}
+
+TEST_CASE("Rapid filter parameter automation keeps active synth output finite",
+          "[plugin][processor][filter][automation]") {
+    ChordSynthAudioProcessor processor;
+    processor.prepareToPlay(48000.0, 64);
+    auto* cutoff = processor.getAPVTS().getRawParameterValue(parameters::ids::cutoff);
+    auto* resonance = processor.getAPVTS().getRawParameterValue(parameters::ids::resonance);
+    REQUIRE(cutoff != nullptr);
+    REQUIRE(resonance != nullptr);
+    juce::AudioBuffer<float> buffer(2, 64);
+    for (int block = 0; block < 100; ++block) {
+        cutoff->store(block % 3 == 0 ? 20.0f : (block % 3 == 1 ? 20000.0f
+                                                                  : std::numeric_limits<float>::infinity()),
+                      std::memory_order_relaxed);
+        resonance->store(block % 2 == 0 ? -1000.0f : 1000.0f,
+                         std::memory_order_relaxed);
+        buffer.clear();
+        juce::MidiBuffer midi;
+        if (block == 0)
+            midi.addEvent(juce::MidiMessage::noteOn(1, 60, 0.8f), 0);
+        processor.processBlock(buffer, midi);
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+            for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+                REQUIRE(std::isfinite(buffer.getSample(channel, sample)));
+    }
 }

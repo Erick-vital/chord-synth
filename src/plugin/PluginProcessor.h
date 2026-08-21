@@ -8,6 +8,7 @@
 
 #include "dsp/ChordSound.h"
 #include "dsp/ChordVoice.h"
+#include "dsp/Filter.h"
 #include "dsp/UiMidiQueue.h"
 #include "parameters/ParameterLayout.h"
 #include <atomic>
@@ -68,9 +69,12 @@ public:
 private:
     static constexpr int numVoices = 16;
     dsp::ChordSynthesiser synth;
+    dsp::Filter globalFilter;
     dsp::UiMidiQueue uiMidiQueue;
     parameters::AudioProcessorValueTreeState apvts;
     std::atomic<float>* waveformParameter{nullptr};
+    std::atomic<float>* cutoffParameter{nullptr};
+    std::atomic<float>* resonanceParameter{nullptr};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessor)
 };

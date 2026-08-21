@@ -36,6 +36,7 @@ target_compile_definitions(chordsynth_juce_headless_test_only PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_LOAD_CURL_SYMBOLS_LAZILY=1
     JUCE_INCLUDE_ZLIB_CODE=1
+    JUCE_USE_FLAC=0
     JUCE_DISABLE_CAUTIOUS_PARAMETER_ID_CHECKING=1
     JUCE_HEADLESS_PLUGIN_CLIENT=1
     JucePlugin_Name="ChordSynth"
@@ -72,6 +73,8 @@ add_library(chordsynth_dsp STATIC
     src/dsp/ChordSound.h
     src/dsp/ChordVoice.h
     src/dsp/ChordVoice.cpp
+    src/dsp/Filter.h
+    src/dsp/Filter.cpp
     src/dsp/Oscillator.h
     src/dsp/Oscillator.cpp
     src/dsp/UiMidiQueue.h

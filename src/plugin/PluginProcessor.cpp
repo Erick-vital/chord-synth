@@ -15,7 +15,11 @@ ChordSynthAudioProcessor::ChordSynthAudioProcessor()
     for (int i = 0; i < numVoices; ++i)
         synth.addVoice(new dsp::ChordVoice());
     waveformParameter = apvts.getRawParameterValue(parameters::ids::waveform);
+    cutoffParameter = apvts.getRawParameterValue(parameters::ids::cutoff);
+    resonanceParameter = apvts.getRawParameterValue(parameters::ids::resonance);
     jassert(waveformParameter != nullptr);
+    jassert(cutoffParameter != nullptr);
+    jassert(resonanceParameter != nullptr);
 }
 
 ChordSynthAudioProcessor::~ChordSynthAudioProcessor()
@@ -70,9 +74,14 @@ void ChordSynthAudioProcessor::changeProgramName(int, const juce::String&)
 {
 }
 
-void ChordSynthAudioProcessor::prepareToPlay(double sampleRate, int /*samplesPerBlock*/)
+void ChordSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     synth.setCurrentPlaybackSampleRate(sampleRate);
+    const auto cutoff = cutoffParameter != nullptr
+        ? cutoffParameter->load(std::memory_order_relaxed) : dsp::Filter::defaultCutoffHz;
+    const auto resonance = resonanceParameter != nullptr
+        ? resonanceParameter->load(std::memory_order_relaxed) : dsp::Filter::defaultResonance;
+    globalFilter.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels(), cutoff, resonance);
 }
 
 void ChordSynthAudioProcessor::releaseResources()
@@ -104,6 +113,13 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     synth.setWaveformForAllVoices(dsp::waveformFromRawChoice(rawWaveform));
 
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+
+    const auto rawCutoff = cutoffParameter != nullptr
+        ? cutoffParameter->load(std::memory_order_relaxed) : dsp::Filter::defaultCutoffHz;
+    const auto rawResonance = resonanceParameter != nullptr
+        ? resonanceParameter->load(std::memory_order_relaxed) : dsp::Filter::defaultResonance;
+    globalFilter.setTargetParameters(rawCutoff, rawResonance);
+    globalFilter.process(buffer);
 }
 
 bool ChordSynthAudioProcessor::hasEditor() const
@@ -136,17 +152,18 @@ void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInB
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
     if (xmlState != nullptr && xmlState->hasTagName(apvts.state.getType())) {
         auto incomingState = juce::ValueTree::fromXml(*xmlState);
-        bool hasWaveform = false;
-        for (const auto& child : incomingState)
-            hasWaveform = hasWaveform
-                || child.getProperty("id").toString() == parameters::ids::waveform;
-
-        if (!hasWaveform) {
-            juce::ValueTree waveformState{"PARAM"};
-            waveformState.setProperty("id", parameters::ids::waveform, nullptr);
-            waveformState.setProperty("value", 0.0f, nullptr);
-            incomingState.appendChild(waveformState, nullptr);
-        }
+        const auto addDefaultIfMissing = [&incomingState](const char* id, float value) {
+            for (const auto& child : incomingState)
+                if (child.getProperty("id").toString() == id)
+                    return;
+            juce::ValueTree parameterState{"PARAM"};
+            parameterState.setProperty("id", id, nullptr);
+            parameterState.setProperty("value", value, nullptr);
+            incomingState.appendChild(parameterState, nullptr);
+        };
+        addDefaultIfMissing(parameters::ids::waveform, 0.0f);
+        addDefaultIfMissing(parameters::ids::cutoff, 8000.0f);
+        addDefaultIfMissing(parameters::ids::resonance, 0.2f);
 
         apvts.replaceState(incomingState);
     }

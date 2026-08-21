@@ -173,3 +173,91 @@ TEST_CASE("State saved before waveform existed restores legacy parameters and ke
     REQUIRE(migratedWaveform.getType().toString() == "PARAM");
     REQUIRE(static_cast<float>(migratedWaveform.getProperty("value")) == Catch::Approx(0.0f));
 }
+
+TEST_CASE("Low-pass parameters have stable continuous automatable contracts and persist",
+          "[parameters][filter]") {
+    ChordSynthAudioProcessor processor;
+    auto& apvts = processor.getAPVTS();
+    auto* cutoff = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::cutoff));
+    auto* resonance = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::resonance));
+    REQUIRE(cutoff != nullptr);
+    REQUIRE(resonance != nullptr);
+
+    const juce::AudioProcessorParameter& cutoffHost = *cutoff;
+    const juce::AudioProcessorParameter& resonanceHost = *resonance;
+    REQUIRE(cutoff->getParameterID() == parameters::ids::cutoff);
+    REQUIRE(cutoff->getVersionHint() == parameters::cutoffParameterVersion);
+    REQUIRE(cutoff->name == parameters::names::cutoff);
+    REQUIRE(cutoffHost.isAutomatable());
+    REQUIRE_FALSE(cutoffHost.isDiscrete());
+    REQUIRE_FALSE(cutoffHost.isBoolean());
+    const auto& cutoffRange = cutoff->getNormalisableRange();
+    REQUIRE(cutoffRange.start == Catch::Approx(20.0f));
+    REQUIRE(cutoffRange.end == Catch::Approx(20000.0f));
+    REQUIRE(cutoffRange.interval == Catch::Approx(0.0f));
+    REQUIRE(cutoffRange.skew != Catch::Approx(1.0f));
+    REQUIRE(cutoffRange.convertFrom0to1(0.5f)
+            == Catch::Approx(std::sqrt(20.0f * 20000.0f)).margin(0.1f));
+    REQUIRE(static_cast<float>(*cutoff) == Catch::Approx(8000.0f));
+    REQUIRE(cutoffHost.getDefaultValue()
+            == Catch::Approx(cutoffRange.convertTo0to1(8000.0f)));
+
+    REQUIRE(resonance->getParameterID() == parameters::ids::resonance);
+    REQUIRE(resonance->getVersionHint() == parameters::resonanceParameterVersion);
+    REQUIRE(resonance->name == parameters::names::resonance);
+    REQUIRE(resonanceHost.isAutomatable());
+    REQUIRE_FALSE(resonanceHost.isDiscrete());
+    REQUIRE_FALSE(resonanceHost.isBoolean());
+    const auto& resonanceRange = resonance->getNormalisableRange();
+    REQUIRE(resonanceRange.start == Catch::Approx(0.1f));
+    REQUIRE(resonanceRange.end == Catch::Approx(2.0f));
+    REQUIRE(resonanceRange.interval == Catch::Approx(0.0f));
+    REQUIRE(resonanceRange.skew == Catch::Approx(1.0f));
+    REQUIRE(static_cast<float>(*resonance) == Catch::Approx(0.2f));
+    REQUIRE(resonanceHost.getDefaultValue()
+            == Catch::Approx(resonanceRange.convertTo0to1(0.2f)));
+
+    *cutoff = 1234.0f;
+    *resonance = 1.25f;
+    juce::MemoryBlock stateBlock;
+    processor.getStateInformation(stateBlock);
+    ChordSynthAudioProcessor restored;
+    restored.setStateInformation(stateBlock.getData(), static_cast<int>(stateBlock.getSize()));
+    auto* restoredCutoff = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::cutoff));
+    auto* restoredResonance = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::resonance));
+    REQUIRE(restoredCutoff != nullptr);
+    REQUIRE(restoredResonance != nullptr);
+    REQUIRE(static_cast<float>(*restoredCutoff) == Catch::Approx(1234.0f));
+    REQUIRE(static_cast<float>(*restoredResonance) == Catch::Approx(1.25f));
+}
+
+TEST_CASE("Legacy state without filter parameters restores new defaults",
+          "[parameters][filter][compatibility]") {
+    ChordSynthAudioProcessor source;
+    auto legacyState = source.getAPVTS().copyState();
+    for (int index = legacyState.getNumChildren(); --index >= 0;) {
+        const auto id = legacyState.getChild(index).getProperty("id").toString();
+        if (id == parameters::ids::cutoff || id == parameters::ids::resonance)
+            legacyState.removeChild(index, nullptr);
+    }
+    std::unique_ptr<juce::XmlElement> xml(legacyState.createXml());
+    juce::MemoryBlock block;
+    juce::AudioProcessor::copyXmlToBinary(*xml, block);
+
+    ChordSynthAudioProcessor restored;
+    auto* cutoff = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::cutoff));
+    auto* resonance = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::resonance));
+    REQUIRE(cutoff != nullptr);
+    REQUIRE(resonance != nullptr);
+    *cutoff = 400.0f;
+    *resonance = 1.5f;
+    restored.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+    REQUIRE(static_cast<float>(*cutoff) == Catch::Approx(8000.0f));
+    REQUIRE(static_cast<float>(*resonance) == Catch::Approx(0.2f));
+}
