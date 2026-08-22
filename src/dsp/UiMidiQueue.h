@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <span>
 #include <juce_core/juce_core.h>
 #include <juce_audio_basics/juce_audio_basics.h>
 
@@ -12,6 +13,7 @@ public:
     ~UiMidiQueue() = default;
 
     bool push(const juce::MidiMessage& message) noexcept;
+    bool tryPushBatch(std::span<const juce::MidiMessage> messages) noexcept;
     void drainTo(juce::MidiBuffer& destination, int sampleOffset = 0) noexcept;
 
 private:

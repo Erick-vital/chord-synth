@@ -125,4 +125,57 @@ TEST_CASE("UiMidiQueue operations and real-time thread safety", "[dsp][uimidi]")
         processor.getUiMidiQueue().drainTo(remainingUi, 0);
         REQUIRE(remainingUi.isEmpty());
     }
+
+    SECTION("tryPushBatch enqueues events atomically or not at all") {
+        std::vector<juce::MidiMessage> batch{
+            juce::MidiMessage::noteOn(1, 60, 0.8f),
+            juce::MidiMessage::noteOn(1, 64, 0.8f),
+            juce::MidiMessage::noteOn(1, 67, 0.8f),
+            juce::MidiMessage::noteOn(1, 71, 0.8f)
+        };
+
+        // 1. Order preservation in batch
+        REQUIRE(queue.tryPushBatch(batch));
+
+        juce::MidiBuffer dest;
+        queue.drainTo(dest, 0);
+
+        REQUIRE(dest.getNumEvents() == 4);
+        int expectedNotes[] = {60, 64, 67, 71};
+        int idx = 0;
+        for (const auto meta : dest) {
+            REQUIRE(meta.getMessage().getNoteNumber() == expectedNotes[idx++]);
+        }
+
+        // 2. Empty batch returns true and changes nothing
+        REQUIRE(queue.tryPushBatch({}));
+        juce::MidiBuffer emptyDest;
+        queue.drainTo(emptyDest, 0);
+        REQUIRE(emptyDest.isEmpty());
+
+        // 3. Batch larger than entire capacity (256) returns false
+        std::vector<juce::MidiMessage> hugeBatch(300, juce::MidiMessage::noteOn(1, 60, 0.5f));
+        REQUIRE_FALSE(queue.tryPushBatch(hugeBatch));
+
+        // 4. Atomic rejection when insufficient remaining capacity
+        // Fill queue up to 254 items (capacity is 256, so 2 spots remain)
+        for (int i = 0; i < 254; ++i) {
+            REQUIRE(queue.push(juce::MidiMessage::noteOn(1, 50, 0.5f)));
+        }
+
+        // Attempting to push a batch of 4 notes when only 2 spots remain must fail
+        // and must NOT write any of the 4 events
+        REQUIRE_FALSE(queue.tryPushBatch(batch));
+
+        // Drain the 254 items and verify no partial batch was pushed
+        juce::MidiBuffer drainFull;
+        queue.drainTo(drainFull, 0);
+        REQUIRE(drainFull.getNumEvents() == 254);
+
+        // Queue is now empty, pushing batch of 4 should succeed
+        REQUIRE(queue.tryPushBatch(batch));
+        juce::MidiBuffer finalDrain;
+        queue.drainTo(finalDrain, 0);
+        REQUIRE(finalDrain.getNumEvents() == 4);
+    }
 }
