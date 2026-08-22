@@ -5,6 +5,23 @@
 
 using namespace chordsynth;
 
+namespace {
+
+juce::Component* findDescendantWithID(juce::Component& component, const juce::String& componentID)
+{
+    for (auto* child : component.getChildren()) {
+        if (child->getComponentID() == componentID)
+            return child;
+
+        if (auto* match = findDescendantWithID(*child, componentID))
+            return match;
+    }
+
+    return nullptr;
+}
+
+} // namespace
+
 TEST_CASE("Production PluginEditor instantiates full performance interface", "[gui][smoke]") {
     const juce::ScopedJuceInitialiser_GUI guiInitialiser;
 
@@ -20,7 +37,7 @@ TEST_CASE("Production PluginEditor instantiates full performance interface", "[g
     // Seven chord keys with accessible IDs degree-0 to degree-6
     for (int deg = 0; deg < 7; ++deg) {
         juce::String degreeId = "degree-" + juce::String(deg);
-        auto* keyComp = editor->findChildWithID(degreeId);
+        auto* keyComp = findDescendantWithID(*editor, degreeId);
         INFO("Checking presence of " << degreeId.toStdString());
         REQUIRE(keyComp != nullptr);
     }
@@ -28,18 +45,18 @@ TEST_CASE("Production PluginEditor instantiates full performance interface", "[g
     // Four scene buttons scene-0 to scene-3
     for (int scene = 0; scene < 4; ++scene) {
         juce::String sceneId = "scene-" + juce::String(scene);
-        auto* sceneBtn = editor->findChildWithID(sceneId);
+        auto* sceneBtn = findDescendantWithID(*editor, sceneId);
         INFO("Checking presence of " << sceneId.toStdString());
         REQUIRE(sceneBtn != nullptr);
     }
 
     // Essential controls: key, waveform, cutoff
-    auto* keyCombo = editor->findChildWithID("key-select");
+    auto* keyCombo = findDescendantWithID(*editor, "key-select");
     REQUIRE(keyCombo != nullptr);
 
-    auto* waveCombo = editor->findChildWithID("waveform-select");
+    auto* waveCombo = findDescendantWithID(*editor, "waveform-select");
     REQUIRE(waveCombo != nullptr);
 
-    auto* cutoffSlider = editor->findChildWithID("cutoff-slider");
+    auto* cutoffSlider = findDescendantWithID(*editor, "cutoff-slider");
     REQUIRE(cutoffSlider != nullptr);
 }
