@@ -40,3 +40,9 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/HeadlessApvtsIsolation.cmake)
+
+add_test(
+    NAME ProductionParameterLayoutIsolationContract
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProductionParameterLayoutIsolation.cmake)

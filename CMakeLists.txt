@@ -172,6 +172,8 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         NEEDS_CURL FALSE)
 
     target_sources(ChordSynth PRIVATE
+        src/parameters/ParameterLayout.cpp
+        src/parameters/ParameterLayout.h
         src/plugin/PluginProcessor.cpp
         src/plugin/PluginProcessor.h
         src/plugin/PluginEditor.cpp
@@ -187,8 +189,6 @@ if(CHORDSYNTH_BUILD_PLUGIN)
 
     target_link_libraries(ChordSynth
         PRIVATE
-            chordsynth_presets
-            chordsynth_parameters
             chordsynth_dsp
             chordsynth_music
             juce::juce_audio_utils
