@@ -69,7 +69,7 @@ add_library(chordsynth_music STATIC
 target_include_directories(chordsynth_music PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-target_link_libraries(chordsynth_music PUBLIC
+target_link_libraries(chordsynth_music PRIVATE
     chordsynth_juce_headless_test_only)
 
 target_compile_features(chordsynth_music PUBLIC cxx_std_20)
@@ -97,6 +97,7 @@ target_include_directories(chordsynth_dsp PUBLIC
 
 target_link_libraries(chordsynth_dsp PUBLIC
     chordsynth_music
+    PRIVATE
     chordsynth_juce_headless_test_only)
 
 target_compile_features(chordsynth_dsp PUBLIC cxx_std_20)
@@ -110,7 +111,7 @@ add_library(chordsynth_parameters STATIC
 target_include_directories(chordsynth_parameters PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-target_link_libraries(chordsynth_parameters PUBLIC
+target_link_libraries(chordsynth_parameters PRIVATE
     chordsynth_juce_headless_test_only)
 
 target_compile_features(chordsynth_parameters PUBLIC cxx_std_20)
@@ -126,6 +127,7 @@ target_include_directories(chordsynth_presets PUBLIC
 
 target_link_libraries(chordsynth_presets PUBLIC
     chordsynth_parameters
+    PRIVATE
     chordsynth_juce_headless_test_only)
 
 target_compile_features(chordsynth_presets PUBLIC cxx_std_20)
@@ -143,6 +145,7 @@ target_link_libraries(chordsynth_plugin PUBLIC
     chordsynth_parameters
     chordsynth_dsp
     chordsynth_music
+    PRIVATE
     chordsynth_juce_headless_test_only)
 
 target_compile_features(chordsynth_plugin PUBLIC cxx_std_20)
@@ -189,6 +192,9 @@ if(CHORDSYNTH_BUILD_PLUGIN)
             chordsynth_dsp
             chordsynth_music
             juce::juce_audio_utils
+            juce::juce_audio_processors
+            juce::juce_gui_basics
+            juce::juce_gui_extra
             juce::juce_dsp
         PUBLIC
             juce::juce_recommended_config_flags

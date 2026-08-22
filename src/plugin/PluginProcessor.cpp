@@ -190,8 +190,8 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     uiMidiQueue.drainTo(midiMessages, 0);
 
     double hostBpm = music::MusicalClock::defaultBpm;
-    if (auto* playHead = getPlayHead()) {
-        if (auto positionOpt = playHead->getPosition()) {
+    if (auto* ph = getPlayHead()) {
+        if (auto positionOpt = ph->getPosition()) {
             if (auto bpmOpt = positionOpt->getBpm()) {
                 hostBpm = *bpmOpt;
             }
