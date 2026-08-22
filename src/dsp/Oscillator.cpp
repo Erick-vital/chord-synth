@@ -1,4 +1,5 @@
 #include "Oscillator.h"
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 

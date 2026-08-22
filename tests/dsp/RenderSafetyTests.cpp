@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "plugin/PluginProcessor.h"
 #include "parameters/ParameterIds.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
