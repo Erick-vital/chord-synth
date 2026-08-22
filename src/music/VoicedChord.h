@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace chordsynth::music {
 
@@ -72,6 +73,14 @@ struct VoicingSpec {
     QualityRule qualityRule{QualityRule::diatonic};
 
     constexpr bool operator==(const VoicingSpec& other) const noexcept = default;
+};
+
+struct VoicedChord {
+    int degree{0};
+    int rootMidi{0};
+    VoicingSpec spec{};
+    NoteSet notes{};
+    std::string label{};
 };
 
 } // namespace chordsynth::music
