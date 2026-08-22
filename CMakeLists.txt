@@ -219,7 +219,10 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         src/ui/ChordSynthLookAndFeel.cpp
         src/ui/ChordSynthLookAndFeel.h
         src/ui/ChordKeyComponent.cpp
-        src/ui/ChordKeyComponent.h)
+        src/ui/ChordKeyComponent.h
+        src/ui/PerformancePanel.cpp
+        src/ui/PerformancePanel.h)
+
 
     target_include_directories(ChordSynth PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src)

@@ -3,6 +3,9 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
+#include "ui/ChordSynthLookAndFeel.h"
+#include "ui/PerformancePanel.h"
+#include "interaction/ChordPerformanceController.h"
 
 namespace chordsynth {
 
@@ -16,6 +19,12 @@ public:
 
 private:
     ChordSynthAudioProcessor& audioProcessor;
+    ui::ChordSynthLookAndFeel lookAndFeel;
+
+    interaction::QueueMidiBatchOutput midiOutput;
+    interaction::ChordPerformanceController performanceController;
+
+    ui::PerformancePanel performancePanel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessorEditor)
 };
