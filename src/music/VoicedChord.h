@@ -1,0 +1,77 @@
+#pragma once
+
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+
+namespace chordsynth::music {
+
+class NoteSet {
+public:
+    constexpr NoteSet() = default;
+
+    constexpr NoteSet(const std::array<int, 4>& rawNotes, int noteCount) noexcept
+        : notes(rawNotes), count(std::clamp(noteCount, 0, 4)) {}
+
+    [[nodiscard]] constexpr int size() const noexcept { return count; }
+    [[nodiscard]] constexpr bool empty() const noexcept { return count == 0; }
+
+    [[nodiscard]] constexpr int operator[](std::size_t index) const noexcept {
+        return notes[index];
+    }
+
+    [[nodiscard]] constexpr const int* begin() const noexcept { return notes.data(); }
+    [[nodiscard]] constexpr const int* end() const noexcept { return notes.data() + count; }
+
+    [[nodiscard]] constexpr const std::array<int, 4>& data() const noexcept { return notes; }
+
+    constexpr bool operator==(const NoteSet& other) const noexcept {
+        if (count != other.count) {
+            return false;
+        }
+        for (int i = 0; i < count; ++i) {
+            if (notes[static_cast<std::size_t>(i)] != other.notes[static_cast<std::size_t>(i)]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    constexpr bool operator!=(const NoteSet& other) const noexcept {
+        return !(*this == other);
+    }
+
+private:
+    std::array<int, 4> notes{};
+    int count{0};
+};
+
+enum class ChordExtension : std::uint8_t {
+    triad,
+    seventh
+};
+
+enum class VoicingStyle : std::uint8_t {
+    close,
+    open
+};
+
+enum class QualityRule : std::uint8_t {
+    diatonic,
+    major,
+    minor,
+    diminished
+};
+
+struct VoicingSpec {
+    ChordExtension extension{ChordExtension::triad};
+    int inversion{0};
+    VoicingStyle style{VoicingStyle::close};
+    int baseOctave{3};
+    QualityRule qualityRule{QualityRule::diatonic};
+
+    constexpr bool operator==(const VoicingSpec& other) const noexcept = default;
+};
+
+} // namespace chordsynth::music

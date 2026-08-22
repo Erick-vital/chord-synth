@@ -64,7 +64,8 @@ add_library(chordsynth_music STATIC
     src/music/MajorScaleChordMap.cpp
     src/music/MusicalClock.h
     src/music/NoteMath.h
-    src/music/NoteMath.cpp)
+    src/music/NoteMath.cpp
+    src/music/VoicedChord.h)
 
 target_include_directories(chordsynth_music PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)

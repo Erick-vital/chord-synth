@@ -14,6 +14,7 @@ add_executable(ChordSynthTests
     music/MajorScaleChordMapTests.cpp
     music/MusicalClockTests.cpp
     music/NoteMathTests.cpp
+    music/VoicedChordTests.cpp
     parameters/ParameterLayoutTests.cpp
     plugin/ProcessorSmokeTests.cpp
     presets/PresetSerializerTests.cpp)
