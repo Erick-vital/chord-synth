@@ -13,7 +13,7 @@ foreach(ui_source ${UI_SOURCES})
     get_filename_component(file_name "${ui_source}" NAME)
     message(STATUS "Checking syntax and types: ${file_name}")
 
-    if(MSVC)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         execute_process(
             COMMAND ${CMAKE_CXX_COMPILER} /std:c++20 /Zs
                 /I${SOURCE_DIR}/src
