@@ -50,6 +50,7 @@ PerformancePanel::PerformancePanel(
     // Scene buttons
     for (int i = 0; i < 4; ++i) {
         sceneButtons[static_cast<std::size_t>(i)].setButtonText(sceneLabels[static_cast<std::size_t>(i)]);
+        sceneButtons[static_cast<std::size_t>(i)].setComponentID("scene-" + juce::String(i));
         sceneButtons[static_cast<std::size_t>(i)].setClickingTogglesState(false);
         sceneButtons[static_cast<std::size_t>(i)].onClick = [this, i]() {
             handleSceneButtonClicked(i);
@@ -61,6 +62,7 @@ PerformancePanel::PerformancePanel(
     for (int i = 0; i < 7; ++i) {
         auto& key = chordKeys[static_cast<std::size_t>(i)];
         key.setDegreeIndex(i);
+        key.setComponentID("degree-" + juce::String(i));
         key.setDegreeLabel(degreeRomanLabels[static_cast<std::size_t>(i)]);
         key.setKeycapShortcut(juce::String::charToString(shortcutChars[static_cast<std::size_t>(i)]));
 

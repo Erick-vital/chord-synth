@@ -28,6 +28,7 @@ HarmonyToolbar::HarmonyToolbar(
     for (int i = 0; i < 12; ++i) {
         keyComboBox.addItem(pitchNames[static_cast<std::size_t>(i)], i + 1);
     }
+    keyComboBox.setComponentID("key-select");
     keyComboBox.setSelectedId(1, juce::dontSendNotification);
 
     keyComboBox.onChange = [this]() {

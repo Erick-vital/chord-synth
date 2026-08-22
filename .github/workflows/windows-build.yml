@@ -45,4 +45,4 @@ jobs:
           path: |
             build/ChordSynth_artefacts/Release/Standalone/ChordSynth.exe
             build/ChordSynth_artefacts/Release/VST3/ChordSynth.vst3
-          if-no-files-found: warn
+          if-no-files-found: error

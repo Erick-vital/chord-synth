@@ -4,12 +4,15 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
 #include "ui/ChordSynthLookAndFeel.h"
+#include "ui/HeaderBar.h"
 #include "ui/HarmonyToolbar.h"
 #include "ui/PerformancePanel.h"
 #include "ui/ChordDesignerPanel.h"
 #include "ui/SoundPanel.h"
 #include "interaction/ChordPerformanceController.h"
 #include "music/DiatonicChordVoicer.h"
+#include "presets/Preset.h"
+#include <vector>
 
 namespace chordsynth {
 
@@ -24,6 +27,8 @@ public:
 
 private:
     void timerCallback() override;
+    void loadPresetAtIndex(int index);
+    void setupBuiltinPresets();
 
     ChordSynthAudioProcessor& audioProcessor;
     ui::ChordSynthLookAndFeel lookAndFeel;
@@ -33,12 +38,14 @@ private:
     interaction::ChordPerformanceController performanceController;
 
     // UI Components
+    ui::HeaderBar headerBar;
     ui::HarmonyToolbar harmonyToolbar;
     ui::PerformancePanel performancePanel;
     ui::SoundPanel soundPanel;
     ui::ChordDesignerPanel chordDesignerPanel;
 
     int lastPolledKeyIndex{0};
+    std::vector<presets::Preset> builtinPresets;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessorEditor)
 };

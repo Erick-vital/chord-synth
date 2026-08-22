@@ -1,5 +1,6 @@
 #pragma once
 
+#include "state/HarmonyState.h"
 #include <juce_core/juce_core.h>
 #include <string>
 
@@ -35,9 +36,10 @@ struct PresetParameters {
 };
 
 struct Preset {
-    int schemaVersion{1};
+    int schemaVersion{2};
     juce::String name{"Default"};
     PresetParameters parameters;
+    state::HarmonyState harmony;
 };
 
 } // namespace chordsynth::presets

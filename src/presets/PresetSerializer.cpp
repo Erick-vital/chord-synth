@@ -63,6 +63,37 @@ juce::String PresetSerializer::toJson(const Preset& preset) {
 
     rootObj->setProperty("parameters", juce::var(paramsObj));
 
+    // Harmony section (schema version 2)
+    auto* harmonyObj = new juce::DynamicObject();
+    harmonyObj->setProperty("selected_scene", preset.harmony.getSelectedScene());
+    harmonyObj->setProperty("live_revoice", preset.harmony.getLiveRevoice());
+    harmonyObj->setProperty("quality_rule", static_cast<int>(preset.harmony.getQualityRule()));
+
+    juce::Array<juce::var> scenesArray;
+    const auto& config = preset.harmony.getConfiguration();
+    for (int sceneIdx = 0; sceneIdx < 4; ++sceneIdx) {
+        auto* sceneObj = new juce::DynamicObject();
+        sceneObj->setProperty("index", sceneIdx);
+
+        juce::Array<juce::var> degreesArray;
+        for (int degIdx = 0; degIdx < 7; ++degIdx) {
+            const auto spec = config.getSpec(sceneIdx, degIdx);
+            auto* degObj = new juce::DynamicObject();
+            degObj->setProperty("index", degIdx);
+            degObj->setProperty("extension", static_cast<int>(spec.extension));
+            degObj->setProperty("inversion", spec.inversion);
+            degObj->setProperty("style", static_cast<int>(spec.style));
+            degObj->setProperty("base_octave", spec.baseOctave);
+            degObj->setProperty("quality_rule", static_cast<int>(spec.qualityRule));
+            degreesArray.add(juce::var(degObj));
+        }
+        sceneObj->setProperty("degrees", juce::var(degreesArray));
+        scenesArray.add(juce::var(sceneObj));
+    }
+    harmonyObj->setProperty("scenes", juce::var(scenesArray));
+
+    rootObj->setProperty("harmony", juce::var(harmonyObj));
+
     return juce::JSON::toString(juce::var(rootObj));
 }
 
@@ -79,7 +110,7 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
         return std::nullopt;
 
     int version = rootObj->getProperty("schema_version");
-    if (version != 1)
+    if (version != 1 && version != 2)
         return std::nullopt;
 
     Preset preset;
@@ -226,12 +257,90 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
         preset.parameters.masterGainDb = std::clamp(val, -60.0f, 12.0f);
     }
 
+    // Parse harmony section if present
+    preset.harmony.resetToDefaults();
+    if (rootObj->hasProperty("harmony")) {
+        auto harmonyVar = rootObj->getProperty("harmony");
+        if (harmonyVar.isObject()) {
+            auto* harmObj = harmonyVar.getDynamicObject();
+            if (harmObj != nullptr) {
+                if (harmObj->hasProperty("selected_scene")) {
+                    int sc = harmObj->getProperty("selected_scene");
+                    preset.harmony.setSelectedScene(std::clamp(sc, 0, 3));
+                }
+                if (harmObj->hasProperty("live_revoice")) {
+                    preset.harmony.setLiveRevoice(static_cast<bool>(harmObj->getProperty("live_revoice")));
+                }
+                if (harmObj->hasProperty("quality_rule")) {
+                    int q = harmObj->getProperty("quality_rule");
+                    if (q >= 0 && q <= 3) {
+                        preset.harmony.setQualityRule(static_cast<music::QualityRule>(q));
+                    }
+                }
+                if (harmObj->hasProperty("scenes")) {
+                    auto scenesVar = harmObj->getProperty("scenes");
+                    if (scenesVar.isArray()) {
+                        auto* scenesArr = scenesVar.getArray();
+                        for (const auto& sceneVar : *scenesArr) {
+                            if (!sceneVar.isObject()) continue;
+                            auto* scObj = sceneVar.getDynamicObject();
+                            if (scObj == nullptr) continue;
+                            int sceneIdx = scObj->getProperty("index");
+                            if (!music::HarmonyConfiguration::isValidScene(sceneIdx)) continue;
+
+                            if (scObj->hasProperty("degrees")) {
+                                auto degreesVar = scObj->getProperty("degrees");
+                                if (degreesVar.isArray()) {
+                                    auto* degreesArr = degreesVar.getArray();
+                                    for (const auto& degVar : *degreesArr) {
+                                        if (!degVar.isObject()) continue;
+                                        auto* degObj = degVar.getDynamicObject();
+                                        if (degObj == nullptr) continue;
+                                        int degIdx = degObj->getProperty("index");
+                                        if (!music::HarmonyConfiguration::isValidDegree(degIdx)) continue;
+
+                                        int rawExt = degObj->getProperty("extension");
+                                        int rawInv = degObj->getProperty("inversion");
+                                        int rawStyle = degObj->getProperty("style");
+                                        int rawOctave = degObj->getProperty("base_octave");
+                                        int rawQual = degObj->getProperty("quality_rule");
+
+                                        music::VoicingSpec spec;
+                                        spec.extension = (rawExt == 1) ? music::ChordExtension::seventh : music::ChordExtension::triad;
+                                        spec.inversion = std::clamp(rawInv, 0, 2);
+                                        spec.style = (rawStyle == 1) ? music::VoicingStyle::open : music::VoicingStyle::close;
+                                        spec.baseOctave = std::clamp(rawOctave, 2, 4);
+                                        if (rawQual >= 0 && rawQual <= 3) {
+                                            spec.qualityRule = static_cast<music::QualityRule>(rawQual);
+                                        }
+
+                                        preset.harmony.getConfiguration().setSpec(sceneIdx, degIdx, spec);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     return preset;
 }
 
 Preset PresetSerializer::fromAPVTS(const parameters::AudioProcessorValueTreeState& apvts, const juce::String& name) {
+    state::HarmonyState defaultHarmony;
+    return fromProcessorState(apvts, defaultHarmony, name);
+}
+
+Preset PresetSerializer::fromProcessorState(
+    const parameters::AudioProcessorValueTreeState& apvts,
+    const state::HarmonyState& harmonyState,
+    const juce::String& name) {
     Preset preset;
+    preset.schemaVersion = 2;
     preset.name = name;
+    preset.harmony = harmonyState;
 
     auto* keyParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::key));
     if (keyParam != nullptr)
@@ -405,6 +514,16 @@ bool PresetSerializer::applyToAPVTS(const Preset& preset, parameters::AudioProce
     if (arpGateParam != nullptr)
         *arpGateParam = preset.parameters.arpGate;
 
+    return true;
+}
+
+bool PresetSerializer::applyToProcessorState(
+    const Preset& preset,
+    parameters::AudioProcessorValueTreeState& apvts,
+    state::HarmonyState& harmonyState) {
+    if (!applyToAPVTS(preset, apvts))
+        return false;
+    harmonyState = preset.harmony;
     return true;
 }
 

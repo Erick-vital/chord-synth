@@ -163,6 +163,7 @@ target_include_directories(chordsynth_presets PUBLIC
 
 target_link_libraries(chordsynth_presets PUBLIC
     chordsynth_parameters
+    chordsynth_state
     PRIVATE
     chordsynth_juce_headless_test_only)
 
@@ -220,6 +221,8 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         src/ui/ChordSynthLookAndFeel.h
         src/ui/ChordKeyComponent.cpp
         src/ui/ChordKeyComponent.h
+        src/ui/HeaderBar.cpp
+        src/ui/HeaderBar.h
         src/ui/PerformancePanel.cpp
         src/ui/PerformancePanel.h
         src/ui/HarmonyToolbar.cpp

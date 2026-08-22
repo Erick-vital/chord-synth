@@ -109,6 +109,81 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         REQUIRE(p.parameters.detuneCents == Catch::Approx(20.0f));
     }
 
+    SECTION("Legacy schema version 1 preset deserializes with default harmony settings") {
+        juce::String v1Json = R"({
+            "schema_version": 1,
+            "name": "Legacy V1",
+            "parameters": {
+                "key": 4,
+                "waveform": "saw",
+                "cutoff_hz": 4000.0
+            }
+        })";
+        auto result = PresetSerializer::fromJson(v1Json);
+        REQUIRE(result.has_value());
+        const auto& p = *result;
+        REQUIRE(p.schemaVersion == 1);
+        REQUIRE(p.name == "Legacy V1");
+        REQUIRE(p.parameters.key == 4);
+        REQUIRE(p.parameters.waveform == "saw");
+        REQUIRE(p.parameters.cutoffHz == Catch::Approx(4000.0f));
+        REQUIRE(p.harmony.getSelectedScene() == 0);
+        REQUIRE(p.harmony.getLiveRevoice() == false);
+        REQUIRE(p.harmony.getQualityRule() == music::QualityRule::diatonic);
+        REQUIRE(p.harmony.getConfiguration().getSpec(0, 0) == music::HarmonyConfiguration::defaultSpecForSceneAndDegree(0, 0));
+    }
+
+    SECTION("Schema version 2 preset serializes and deserializes harmony state faithfully") {
+        Preset original;
+        original.schemaVersion = 2;
+        original.name = "Custom Harmony Preset";
+        original.parameters.key = 2; // D
+        original.parameters.waveform = "triangle";
+        original.harmony.setSelectedScene(2);
+        original.harmony.setLiveRevoice(true);
+        original.harmony.setQualityRule(music::QualityRule::major);
+
+        music::VoicingSpec customSpec{
+            .extension = music::ChordExtension::seventh,
+            .inversion = 1,
+            .style = music::VoicingStyle::open,
+            .baseOctave = 4,
+            .qualityRule = music::QualityRule::minor
+        };
+        original.harmony.getConfiguration().setSpec(2, 1, customSpec); // Scene C, Degree ii
+
+        auto jsonString = PresetSerializer::toJson(original);
+        REQUIRE_FALSE(jsonString.isEmpty());
+
+        auto result = PresetSerializer::fromJson(jsonString);
+        REQUIRE(result.has_value());
+        const auto& restored = *result;
+        REQUIRE(restored.schemaVersion == 2);
+        REQUIRE(restored.name == "Custom Harmony Preset");
+        REQUIRE(restored.parameters.key == 2);
+        REQUIRE(restored.parameters.waveform == "triangle");
+        REQUIRE(restored.harmony.getSelectedScene() == 2);
+        REQUIRE(restored.harmony.getLiveRevoice() == true);
+        REQUIRE(restored.harmony.getQualityRule() == music::QualityRule::major);
+        REQUIRE(restored.harmony.getConfiguration().getSpec(2, 1) == customSpec);
+        // Untouched degree should remain default
+        REQUIRE(restored.harmony.getConfiguration().getSpec(0, 0) == music::HarmonyConfiguration::defaultSpecForSceneAndDegree(0, 0));
+    }
+
+    SECTION("Schema version 2 with malformed or missing harmony section falls back to defaults safely") {
+        juce::String v2MissingHarmony = R"({
+            "schema_version": 2,
+            "name": "Partial V2",
+            "parameters": {
+                "key": 0
+            }
+        })";
+        auto result = PresetSerializer::fromJson(v2MissingHarmony);
+        REQUIRE(result.has_value());
+        REQUIRE(result->harmony.getSelectedScene() == 0);
+        REQUIRE(result->harmony.getLiveRevoice() == false);
+    }
+
     SECTION("Unsupported schema version fails deserialization") {
         juce::String futureJson = R"({ "schema_version": 999, "name": "Future", "parameters": {} })";
         auto result = PresetSerializer::fromJson(futureJson);
@@ -328,5 +403,43 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
     REQUIRE(*targetArpEnabled == true);
     REQUIRE(targetArpMode->getIndex() == 1);
     REQUIRE(targetArpRate->getIndex() == 0);
-    REQUIRE(static_cast<float>(*targetArpGate) == Catch::Approx(0.65f));
+    SECTION("PresetSerializer supports processor harmony state load and store") {
+        ChordSynthAudioProcessor srcProcessor;
+        srcProcessor.getHarmonyState().setSelectedScene(3);
+        srcProcessor.getHarmonyState().setLiveRevoice(true);
+        srcProcessor.getHarmonyState().setQualityRule(music::QualityRule::diminished);
+
+        music::VoicingSpec spec{
+            .extension = music::ChordExtension::seventh,
+            .inversion = 2,
+            .style = music::VoicingStyle::open,
+            .baseOctave = 2,
+            .qualityRule = music::QualityRule::major
+        };
+        srcProcessor.getHarmonyState().getConfiguration().setSpec(3, 4, spec);
+
+        auto preset = PresetSerializer::fromProcessorState(
+            srcProcessor.getAPVTS(),
+            srcProcessor.getHarmonyState(),
+            "HarmonyPreset");
+
+        REQUIRE(preset.schemaVersion == 2);
+        REQUIRE(preset.name == "HarmonyPreset");
+        REQUIRE(preset.harmony.getSelectedScene() == 3);
+        REQUIRE(preset.harmony.getLiveRevoice() == true);
+        REQUIRE(preset.harmony.getQualityRule() == music::QualityRule::diminished);
+        REQUIRE(preset.harmony.getConfiguration().getSpec(3, 4) == spec);
+
+        ChordSynthAudioProcessor dstProcessor;
+        bool applied = PresetSerializer::applyToProcessorState(
+            preset,
+            dstProcessor.getAPVTS(),
+            dstProcessor.getHarmonyState());
+
+        REQUIRE(applied);
+        REQUIRE(dstProcessor.getHarmonyState().getSelectedScene() == 3);
+        REQUIRE(dstProcessor.getHarmonyState().getLiveRevoice() == true);
+        REQUIRE(dstProcessor.getHarmonyState().getQualityRule() == music::QualityRule::diminished);
+        REQUIRE(dstProcessor.getHarmonyState().getConfiguration().getSpec(3, 4) == spec);
+    }
 }

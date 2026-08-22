@@ -44,6 +44,7 @@ SoundPanel::SoundPanel(parameters::AudioProcessorValueTreeState& state)
     waveComboBox.addItem("Saw", 2);
     waveComboBox.addItem("Square", 3);
     waveComboBox.addItem("Triangle", 4);
+    waveComboBox.setComponentID("waveform-select");
     addAndMakeVisible(waveComboBox);
 
     detuneLabel.setText("Detune", juce::dontSendNotification);
@@ -70,6 +71,7 @@ SoundPanel::SoundPanel(parameters::AudioProcessorValueTreeState& state)
     addAndMakeVisible(cutoffLabel);
 
     cutoffSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    cutoffSlider.setComponentID("cutoff-slider");
     cutoffSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 55, 20);
     cutoffSlider.setTextValueSuffix(" Hz");
     addAndMakeVisible(cutoffSlider);

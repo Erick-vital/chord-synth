@@ -59,3 +59,44 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PerformancePanelSourceContract.cmake)
+
+add_test(
+    NAME ProductionUiSourcesContract
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProductionUiSourcesContract.cmake)
+
+if(CHORDSYNTH_BUILD_PLUGIN)
+    add_executable(ChordSynthGuiSmokeTests
+        gui/EditorSmokeTests.cpp
+        ../src/parameters/ParameterLayout.cpp
+        ../src/plugin/PluginProcessor.cpp
+        ../src/plugin/PluginEditor.cpp
+        ../src/ui/ChordSynthLookAndFeel.cpp
+        ../src/ui/ChordKeyComponent.cpp
+        ../src/ui/HeaderBar.cpp
+        ../src/ui/PerformancePanel.cpp
+        ../src/ui/HarmonyToolbar.cpp
+        ../src/ui/ChordDesignerPanel.cpp
+        ../src/ui/SoundPanel.cpp)
+
+    target_link_libraries(ChordSynthGuiSmokeTests PRIVATE
+        chordsynth_presets
+        chordsynth_dsp
+        chordsynth_music
+        chordsynth_interaction
+        chordsynth_state
+        juce::juce_audio_utils
+        juce::juce_audio_processors
+        juce::juce_gui_basics
+        juce::juce_gui_extra
+        juce::juce_dsp
+        Catch2::Catch2WithMain)
+
+    target_include_directories(ChordSynthGuiSmokeTests PRIVATE
+        ${CMAKE_SOURCE_DIR}/src)
+
+    target_compile_features(ChordSynthGuiSmokeTests PRIVATE cxx_std_20)
+
+    catch_discover_tests(ChordSynthGuiSmokeTests)
+endif()
