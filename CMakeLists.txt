@@ -219,6 +219,7 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         src/plugin/PluginProcessor.h
         src/plugin/PluginEditor.cpp
         src/plugin/PluginEditor.h
+        src/standalone/ChordSynthStandaloneApp.cpp
         src/ui/ChordSynthLookAndFeel.cpp
         src/ui/ChordSynthLookAndFeel.h
         src/ui/ChordKeyComponent.cpp
@@ -239,6 +240,7 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
     target_compile_definitions(ChordSynth PUBLIC
+        JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0)

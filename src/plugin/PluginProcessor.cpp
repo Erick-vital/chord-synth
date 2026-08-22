@@ -4,6 +4,63 @@
 #include "PluginEditor.h"
 #endif
 
+#include <cerrno>
+#include <cmath>
+#include <cstdlib>
+
+namespace {
+
+bool isFiniteNumericValue(const juce::var& value)
+{
+    if (value.isInt() || value.isInt64() || value.isDouble() || value.isBool())
+        return std::isfinite(static_cast<double>(value));
+
+    if (!value.isString())
+        return false;
+
+    const auto text = value.toString();
+    const auto* begin = text.toRawUTF8();
+    char* end = nullptr;
+    errno = 0;
+    const auto parsed = std::strtod(begin, &end);
+    return end != begin && *end == '\0' && errno != ERANGE && std::isfinite(parsed);
+}
+
+void removeUnsafeParameterChildren(juce::ValueTree& state,
+                                   chordsynth::parameters::AudioProcessorValueTreeState& apvts)
+{
+    juce::StringArray restoredIds;
+
+    for (int index = 0; index < state.getNumChildren();) {
+        const auto child = state.getChild(index);
+        const auto hasParameterId = child.hasProperty("id");
+        const auto isParameter = child.hasType("PARAM");
+
+        if (!isParameter) {
+            if (hasParameterId)
+                state.removeChild(index, nullptr);
+            else
+                ++index;
+            continue;
+        }
+
+        const auto id = child.getProperty("id").toString();
+        const auto value = child.getProperty("value");
+        const auto isKnownParameter = apvts.getParameter(id) != nullptr;
+        const auto isDuplicate = restoredIds.contains(id);
+
+        if (!isKnownParameter || isDuplicate || !isFiniteNumericValue(value)) {
+            state.removeChild(index, nullptr);
+            continue;
+        }
+
+        restoredIds.add(id);
+        ++index;
+    }
+}
+
+} // namespace
+
 namespace chordsynth {
 
 ChordSynthAudioProcessor::ChordSynthAudioProcessor()
@@ -318,6 +375,8 @@ void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInB
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
     if (xmlState != nullptr && xmlState->hasTagName(apvts.state.getType())) {
         auto incomingState = juce::ValueTree::fromXml(*xmlState);
+        removeUnsafeParameterChildren(incomingState, apvts);
+
         const auto addDefaultIfMissing = [&incomingState](const char* id, float value) {
             for (const auto& child : incomingState)
                 if (child.getProperty("id").toString() == id)

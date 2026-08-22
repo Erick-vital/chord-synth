@@ -855,6 +855,33 @@ TEST_CASE("Legacy state without arpeggiator parameters restores new defaults",
     REQUIRE(restoredKey->getIndex() == 11);
 }
 
+TEST_CASE("Processor ignores semantically invalid parameter children in an otherwise valid state",
+          "[parameters][robustness][persistence]") {
+    ChordSynthAudioProcessor source;
+    auto* sourceKey = dynamic_cast<juce::AudioParameterChoice*>(
+        source.getAPVTS().getParameter(parameters::ids::key));
+    REQUIRE(sourceKey != nullptr);
+    *sourceKey = 7;
+
+    auto state = source.getAPVTS().copyState();
+    juce::ValueTree invalidChild{"NOT_PARAM"};
+    invalidChild.setProperty("id", parameters::ids::key, nullptr);
+    invalidChild.setProperty("value", 0.0f, nullptr);
+    state.appendChild(invalidChild, nullptr);
+
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    juce::MemoryBlock block;
+    juce::AudioProcessor::copyXmlToBinary(*xml, block);
+
+    ChordSynthAudioProcessor restored;
+    restored.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+
+    auto* restoredKey = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::key));
+    REQUIRE(restoredKey != nullptr);
+    REQUIRE(restoredKey->getIndex() == 7);
+}
+
 TEST_CASE("Processor handles malformed, null, or wrong-type state blobs safely",
           "[parameters][robustness]") {
     ChordSynthAudioProcessor processor;

@@ -44,5 +44,6 @@ jobs:
           name: chordsynth-windows-x64-release
           path: |
             build/ChordSynth_artefacts/Release/Standalone/ChordSynth.exe
+            build/ChordSynth_artefacts/Release/Standalone/*.pdb
             build/ChordSynth_artefacts/Release/VST3/ChordSynth.vst3
           if-no-files-found: error
