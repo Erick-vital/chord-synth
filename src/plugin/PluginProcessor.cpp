@@ -18,10 +18,42 @@ ChordSynthAudioProcessor::ChordSynthAudioProcessor()
     cutoffParameter = apvts.getRawParameterValue(parameters::ids::cutoff);
     resonanceParameter = apvts.getRawParameterValue(parameters::ids::resonance);
     detuneParameter = apvts.getRawParameterValue(parameters::ids::detune);
+    chorusMixParameter = apvts.getRawParameterValue(parameters::ids::chorusMix);
+    chorusRateParameter = apvts.getRawParameterValue(parameters::ids::chorusRate);
+    chorusDepthParameter = apvts.getRawParameterValue(parameters::ids::chorusDepth);
+    delayMixParameter = apvts.getRawParameterValue(parameters::ids::delayMix);
+    delayFeedbackParameter = apvts.getRawParameterValue(parameters::ids::delayFeedback);
+    delayTimeMsParameter = apvts.getRawParameterValue(parameters::ids::delayTimeMs);
+    delaySyncParameter = apvts.getRawParameterValue(parameters::ids::delaySync);
+    delaySyncRateParameter = apvts.getRawParameterValue(parameters::ids::delaySyncRate);
+    reverbMixParameter = apvts.getRawParameterValue(parameters::ids::reverbMix);
+    reverbRoomSizeParameter = apvts.getRawParameterValue(parameters::ids::reverbRoomSize);
+    reverbDampingParameter = apvts.getRawParameterValue(parameters::ids::reverbDamping);
+    reverbWidthParameter = apvts.getRawParameterValue(parameters::ids::reverbWidth);
+    arpEnabledParameter = apvts.getRawParameterValue(parameters::ids::arpEnabled);
+    arpModeParameter = apvts.getRawParameterValue(parameters::ids::arpMode);
+    arpRateParameter = apvts.getRawParameterValue(parameters::ids::arpRate);
+    arpGateParameter = apvts.getRawParameterValue(parameters::ids::arpGate);
     jassert(waveformParameter != nullptr);
     jassert(cutoffParameter != nullptr);
     jassert(resonanceParameter != nullptr);
     jassert(detuneParameter != nullptr);
+    jassert(chorusMixParameter != nullptr);
+    jassert(chorusRateParameter != nullptr);
+    jassert(chorusDepthParameter != nullptr);
+    jassert(delayMixParameter != nullptr);
+    jassert(delayFeedbackParameter != nullptr);
+    jassert(delayTimeMsParameter != nullptr);
+    jassert(delaySyncParameter != nullptr);
+    jassert(delaySyncRateParameter != nullptr);
+    jassert(reverbMixParameter != nullptr);
+    jassert(reverbRoomSizeParameter != nullptr);
+    jassert(reverbDampingParameter != nullptr);
+    jassert(reverbWidthParameter != nullptr);
+    jassert(arpEnabledParameter != nullptr);
+    jassert(arpModeParameter != nullptr);
+    jassert(arpRateParameter != nullptr);
+    jassert(arpGateParameter != nullptr);
 }
 
 ChordSynthAudioProcessor::~ChordSynthAudioProcessor()
@@ -84,6 +116,53 @@ void ChordSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBl
     const auto resonance = resonanceParameter != nullptr
         ? resonanceParameter->load(std::memory_order_relaxed) : dsp::Filter::defaultResonance;
     globalFilter.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels(), cutoff, resonance);
+
+    const auto chorusMix = chorusMixParameter != nullptr
+        ? chorusMixParameter->load(std::memory_order_relaxed) : dsp::Chorus::defaultMix;
+    const auto chorusRate = chorusRateParameter != nullptr
+        ? chorusRateParameter->load(std::memory_order_relaxed) : dsp::Chorus::defaultRateHz;
+    const auto chorusDepth = chorusDepthParameter != nullptr
+        ? chorusDepthParameter->load(std::memory_order_relaxed) : dsp::Chorus::defaultDepth;
+    chorus.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels(), chorusMix, chorusRate, chorusDepth);
+
+    const auto delayMix = delayMixParameter != nullptr
+        ? delayMixParameter->load(std::memory_order_relaxed) : dsp::TempoDelay::defaultMix;
+    const auto delayFeedback = delayFeedbackParameter != nullptr
+        ? delayFeedbackParameter->load(std::memory_order_relaxed) : dsp::TempoDelay::defaultFeedback;
+    const auto delayTimeMs = delayTimeMsParameter != nullptr
+        ? delayTimeMsParameter->load(std::memory_order_relaxed) : dsp::TempoDelay::defaultTimeMs;
+    const auto rawDelaySync = delaySyncParameter != nullptr
+        ? delaySyncParameter->load(std::memory_order_relaxed) : 1.0f;
+    const auto rawDelaySyncRate = delaySyncRateParameter != nullptr
+        ? delaySyncRateParameter->load(std::memory_order_relaxed) : 0.0f;
+    delay.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels(),
+                  delayMix, delayFeedback, delayTimeMs,
+                  rawDelaySync > 0.5f, dsp::delaySyncRateFromRawChoice(rawDelaySyncRate));
+
+    const auto reverbMix = reverbMixParameter != nullptr
+        ? reverbMixParameter->load(std::memory_order_relaxed) : dsp::Reverb::defaultMix;
+    const auto reverbRoomSize = reverbRoomSizeParameter != nullptr
+        ? reverbRoomSizeParameter->load(std::memory_order_relaxed) : dsp::Reverb::defaultRoomSize;
+    const auto reverbDamping = reverbDampingParameter != nullptr
+        ? reverbDampingParameter->load(std::memory_order_relaxed) : dsp::Reverb::defaultDamping;
+    const auto reverbWidth = reverbWidthParameter != nullptr
+        ? reverbWidthParameter->load(std::memory_order_relaxed) : dsp::Reverb::defaultWidth;
+    reverb.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels(),
+                   reverbMix, reverbRoomSize, reverbDamping, reverbWidth);
+
+    arpeggiator.prepare(sampleRate);
+    const auto rawArpEnabled = arpEnabledParameter != nullptr
+        ? arpEnabledParameter->load(std::memory_order_relaxed) : 0.0f;
+    const auto rawArpMode = arpModeParameter != nullptr
+        ? arpModeParameter->load(std::memory_order_relaxed) : 0.0f;
+    const auto rawArpRate = arpRateParameter != nullptr
+        ? arpRateParameter->load(std::memory_order_relaxed) : 1.0f;
+    const auto rawArpGate = arpGateParameter != nullptr
+        ? arpGateParameter->load(std::memory_order_relaxed) : 0.8f;
+    arpeggiator.setEnabled(rawArpEnabled > 0.5f);
+    arpeggiator.setMode(music::arpModeFromRawChoice(rawArpMode));
+    arpeggiator.setRate(music::arpRateFromRawChoice(rawArpRate));
+    arpeggiator.setGate(rawArpGate);
 }
 
 void ChordSynthAudioProcessor::releaseResources()
@@ -110,6 +189,48 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
 
     uiMidiQueue.drainTo(midiMessages, 0);
 
+    double hostBpm = music::MusicalClock::defaultBpm;
+    if (auto* playHead = getPlayHead()) {
+        if (auto positionOpt = playHead->getPosition()) {
+            if (auto bpmOpt = positionOpt->getBpm()) {
+                hostBpm = *bpmOpt;
+            }
+        }
+    }
+
+    const auto rawArpEnabled = arpEnabledParameter != nullptr
+        ? arpEnabledParameter->load(std::memory_order_relaxed) : 0.0f;
+    const bool isArpActive = rawArpEnabled > 0.5f;
+    arpeggiator.setEnabled(isArpActive);
+
+    juce::MidiBuffer synthMidi;
+    if (isArpActive) {
+        const auto rawArpMode = arpModeParameter != nullptr
+            ? arpModeParameter->load(std::memory_order_relaxed) : 0.0f;
+        const auto rawArpRate = arpRateParameter != nullptr
+            ? arpRateParameter->load(std::memory_order_relaxed) : 1.0f;
+        const auto rawArpGate = arpGateParameter != nullptr
+            ? arpGateParameter->load(std::memory_order_relaxed) : 0.8f;
+        arpeggiator.setMode(music::arpModeFromRawChoice(rawArpMode));
+        arpeggiator.setRate(music::arpRateFromRawChoice(rawArpRate));
+        arpeggiator.setGate(rawArpGate);
+
+        for (const auto meta : midiMessages) {
+            auto msg = meta.getMessage();
+            if (msg.isNoteOn()) {
+                arpeggiator.noteOn(msg.getNoteNumber(), msg.getFloatVelocity());
+            } else if (msg.isNoteOff()) {
+                arpeggiator.noteOff(msg.getNoteNumber());
+            } else if (msg.isAllNotesOff() || msg.isAllSoundOff()) {
+                arpeggiator.allNotesOff();
+            }
+        }
+
+        arpeggiator.processBlock(synthMidi, buffer.getNumSamples(), hostBpm);
+    } else {
+        synthMidi.addEvents(midiMessages, 0, buffer.getNumSamples(), 0);
+    }
+
     const auto rawWaveform = waveformParameter != nullptr
         ? waveformParameter->load(std::memory_order_relaxed) : 0.0f;
     synth.setWaveformForAllVoices(dsp::waveformFromRawChoice(rawWaveform));
@@ -118,7 +239,7 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         ? detuneParameter->load(std::memory_order_relaxed) : 7.0f;
     synth.setDetuneCentsForAllVoices(rawDetune);
 
-    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    synth.renderNextBlock(buffer, synthMidi, 0, buffer.getNumSamples());
 
     const auto rawCutoff = cutoffParameter != nullptr
         ? cutoffParameter->load(std::memory_order_relaxed) : dsp::Filter::defaultCutoffHz;
@@ -126,6 +247,41 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         ? resonanceParameter->load(std::memory_order_relaxed) : dsp::Filter::defaultResonance;
     globalFilter.setTargetParameters(rawCutoff, rawResonance);
     globalFilter.process(buffer);
+
+    const auto rawChorusMix = chorusMixParameter != nullptr
+        ? chorusMixParameter->load(std::memory_order_relaxed) : dsp::Chorus::defaultMix;
+    const auto rawChorusRate = chorusRateParameter != nullptr
+        ? chorusRateParameter->load(std::memory_order_relaxed) : dsp::Chorus::defaultRateHz;
+    const auto rawChorusDepth = chorusDepthParameter != nullptr
+        ? chorusDepthParameter->load(std::memory_order_relaxed) : dsp::Chorus::defaultDepth;
+    chorus.setTargetParameters(rawChorusMix, rawChorusRate, rawChorusDepth);
+    chorus.process(buffer);
+
+    const auto rawDelayMix = delayMixParameter != nullptr
+        ? delayMixParameter->load(std::memory_order_relaxed) : dsp::TempoDelay::defaultMix;
+    const auto rawDelayFeedback = delayFeedbackParameter != nullptr
+        ? delayFeedbackParameter->load(std::memory_order_relaxed) : dsp::TempoDelay::defaultFeedback;
+    const auto rawDelayTimeMs = delayTimeMsParameter != nullptr
+        ? delayTimeMsParameter->load(std::memory_order_relaxed) : dsp::TempoDelay::defaultTimeMs;
+    const auto rawDelaySync = delaySyncParameter != nullptr
+        ? delaySyncParameter->load(std::memory_order_relaxed) : 1.0f;
+    const auto rawDelaySyncRate = delaySyncRateParameter != nullptr
+        ? delaySyncRateParameter->load(std::memory_order_relaxed) : 0.0f;
+
+    delay.setTargetParameters(rawDelayMix, rawDelayFeedback, rawDelayTimeMs,
+                              rawDelaySync > 0.5f, dsp::delaySyncRateFromRawChoice(rawDelaySyncRate));
+    delay.process(buffer, hostBpm);
+
+    const auto rawReverbMix = reverbMixParameter != nullptr
+        ? reverbMixParameter->load(std::memory_order_relaxed) : dsp::Reverb::defaultMix;
+    const auto rawReverbRoomSize = reverbRoomSizeParameter != nullptr
+        ? reverbRoomSizeParameter->load(std::memory_order_relaxed) : dsp::Reverb::defaultRoomSize;
+    const auto rawReverbDamping = reverbDampingParameter != nullptr
+        ? reverbDampingParameter->load(std::memory_order_relaxed) : dsp::Reverb::defaultDamping;
+    const auto rawReverbWidth = reverbWidthParameter != nullptr
+        ? reverbWidthParameter->load(std::memory_order_relaxed) : dsp::Reverb::defaultWidth;
+    reverb.setTargetParameters(rawReverbMix, rawReverbRoomSize, rawReverbDamping, rawReverbWidth);
+    reverb.process(buffer);
 }
 
 bool ChordSynthAudioProcessor::hasEditor() const
@@ -174,6 +330,22 @@ void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInB
         addDefaultIfMissing(parameters::ids::cutoff, 8000.0f);
         addDefaultIfMissing(parameters::ids::resonance, 0.2f);
         addDefaultIfMissing(parameters::ids::detune, 7.0f);
+        addDefaultIfMissing(parameters::ids::chorusMix, 0.0f);
+        addDefaultIfMissing(parameters::ids::chorusRate, 1.0f);
+        addDefaultIfMissing(parameters::ids::chorusDepth, 0.25f);
+        addDefaultIfMissing(parameters::ids::delayMix, 0.0f);
+        addDefaultIfMissing(parameters::ids::delayFeedback, 0.3f);
+        addDefaultIfMissing(parameters::ids::delayTimeMs, 250.0f);
+        addDefaultIfMissing(parameters::ids::delaySync, 1.0f);
+        addDefaultIfMissing(parameters::ids::delaySyncRate, 0.0f);
+        addDefaultIfMissing(parameters::ids::reverbMix, 0.0f);
+        addDefaultIfMissing(parameters::ids::reverbRoomSize, 0.5f);
+        addDefaultIfMissing(parameters::ids::reverbDamping, 0.5f);
+        addDefaultIfMissing(parameters::ids::reverbWidth, 1.0f);
+        addDefaultIfMissing(parameters::ids::arpEnabled, 0.0f);
+        addDefaultIfMissing(parameters::ids::arpMode, 0.0f);
+        addDefaultIfMissing(parameters::ids::arpRate, 1.0f);
+        addDefaultIfMissing(parameters::ids::arpGate, 0.8f);
 
         apvts.replaceState(incomingState);
     }

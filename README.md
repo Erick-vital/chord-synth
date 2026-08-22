@@ -65,4 +65,7 @@ UI (7 Diatonic Pads / Controls) / Host MIDI Input
 ## Documentación y Referencias
 
 - Plan de implementación: `docs/plans/2026-08-20-chord-synth-implementation-plan.md`
+- Guía de compilación en Windows: `docs/build-windows.md`
+- Guía de usuario: `docs/user-guide.md`
+- Notas de versiones: `CHANGELOG.md`
 - Referencias y marco regulatorio/funcional: `docs/references.md`

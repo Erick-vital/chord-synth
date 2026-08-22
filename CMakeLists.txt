@@ -57,14 +57,20 @@ target_compile_features(chordsynth_juce_headless_test_only PUBLIC cxx_std_20)
 
 # Music Theory Pure Library (independiente de JUCE y de hosts)
 add_library(chordsynth_music STATIC
+    src/music/Arpeggiator.h
+    src/music/Arpeggiator.cpp
     src/music/Chord.h
     src/music/MajorScaleChordMap.h
     src/music/MajorScaleChordMap.cpp
+    src/music/MusicalClock.h
     src/music/NoteMath.h
     src/music/NoteMath.cpp)
 
 target_include_directories(chordsynth_music PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_link_libraries(chordsynth_music PUBLIC
+    chordsynth_juce_headless_test_only)
 
 target_compile_features(chordsynth_music PUBLIC cxx_std_20)
 
@@ -73,6 +79,12 @@ add_library(chordsynth_dsp STATIC
     src/dsp/ChordSound.h
     src/dsp/ChordVoice.h
     src/dsp/ChordVoice.cpp
+    src/dsp/Chorus.h
+    src/dsp/Chorus.cpp
+    src/dsp/TempoDelay.h
+    src/dsp/TempoDelay.cpp
+    src/dsp/Reverb.h
+    src/dsp/Reverb.cpp
     src/dsp/Filter.h
     src/dsp/Filter.cpp
     src/dsp/Oscillator.h

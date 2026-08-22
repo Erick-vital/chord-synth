@@ -43,6 +43,22 @@ juce::String PresetSerializer::toJson(const Preset& preset) {
     paramsObj->setProperty("cutoff_hz", preset.parameters.cutoffHz);
     paramsObj->setProperty("resonance", preset.parameters.resonance);
     paramsObj->setProperty("detune_cents", preset.parameters.detuneCents);
+    paramsObj->setProperty("chorus_mix", preset.parameters.chorusMix);
+    paramsObj->setProperty("chorus_rate_hz", preset.parameters.chorusRateHz);
+    paramsObj->setProperty("chorus_depth", preset.parameters.chorusDepth);
+    paramsObj->setProperty("delay_mix", preset.parameters.delayMix);
+    paramsObj->setProperty("delay_feedback", preset.parameters.delayFeedback);
+    paramsObj->setProperty("delay_time_ms", preset.parameters.delayTimeMs);
+    paramsObj->setProperty("delay_sync", preset.parameters.delaySync);
+    paramsObj->setProperty("delay_sync_rate", preset.parameters.delaySyncRate);
+    paramsObj->setProperty("reverb_mix", preset.parameters.reverbMix);
+    paramsObj->setProperty("reverb_room_size", preset.parameters.reverbRoomSize);
+    paramsObj->setProperty("reverb_damping", preset.parameters.reverbDamping);
+    paramsObj->setProperty("reverb_width", preset.parameters.reverbWidth);
+    paramsObj->setProperty("arp_enabled", preset.parameters.arpEnabled);
+    paramsObj->setProperty("arp_mode", preset.parameters.arpMode);
+    paramsObj->setProperty("arp_rate", preset.parameters.arpRate);
+    paramsObj->setProperty("arp_gate", preset.parameters.arpGate);
     paramsObj->setProperty("master_gain_db", preset.parameters.masterGainDb);
 
     rootObj->setProperty("parameters", juce::var(paramsObj));
@@ -127,6 +143,84 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
         preset.parameters.detuneCents = std::clamp(val, 0.0f, 20.0f);
     }
 
+    if (paramsObj->hasProperty("chorus_mix")) {
+        float val = static_cast<float>(paramsObj->getProperty("chorus_mix"));
+        preset.parameters.chorusMix = std::clamp(val, 0.0f, 1.0f);
+    }
+
+    if (paramsObj->hasProperty("chorus_rate_hz")) {
+        float val = static_cast<float>(paramsObj->getProperty("chorus_rate_hz"));
+        preset.parameters.chorusRateHz = std::clamp(val, 0.1f, 10.0f);
+    }
+
+    if (paramsObj->hasProperty("chorus_depth")) {
+        float val = static_cast<float>(paramsObj->getProperty("chorus_depth"));
+        preset.parameters.chorusDepth = std::clamp(val, 0.0f, 1.0f);
+    }
+
+    if (paramsObj->hasProperty("delay_mix")) {
+        float val = static_cast<float>(paramsObj->getProperty("delay_mix"));
+        preset.parameters.delayMix = std::clamp(val, 0.0f, 1.0f);
+    }
+
+    if (paramsObj->hasProperty("delay_feedback")) {
+        float val = static_cast<float>(paramsObj->getProperty("delay_feedback"));
+        preset.parameters.delayFeedback = std::clamp(val, 0.0f, 0.95f);
+    }
+
+    if (paramsObj->hasProperty("delay_time_ms")) {
+        float val = static_cast<float>(paramsObj->getProperty("delay_time_ms"));
+        preset.parameters.delayTimeMs = std::clamp(val, 10.0f, 2000.0f);
+    }
+
+    if (paramsObj->hasProperty("delay_sync")) {
+        preset.parameters.delaySync = static_cast<bool>(paramsObj->getProperty("delay_sync"));
+    }
+
+    if (paramsObj->hasProperty("delay_sync_rate")) {
+        int val = static_cast<int>(paramsObj->getProperty("delay_sync_rate"));
+        preset.parameters.delaySyncRate = std::clamp(val, 0, 2);
+    }
+
+    if (paramsObj->hasProperty("reverb_mix")) {
+        float val = static_cast<float>(paramsObj->getProperty("reverb_mix"));
+        preset.parameters.reverbMix = std::clamp(val, 0.0f, 1.0f);
+    }
+
+    if (paramsObj->hasProperty("reverb_room_size")) {
+        float val = static_cast<float>(paramsObj->getProperty("reverb_room_size"));
+        preset.parameters.reverbRoomSize = std::clamp(val, 0.0f, 1.0f);
+    }
+
+    if (paramsObj->hasProperty("reverb_damping")) {
+        float val = static_cast<float>(paramsObj->getProperty("reverb_damping"));
+        preset.parameters.reverbDamping = std::clamp(val, 0.0f, 1.0f);
+    }
+
+    if (paramsObj->hasProperty("reverb_width")) {
+        float val = static_cast<float>(paramsObj->getProperty("reverb_width"));
+        preset.parameters.reverbWidth = std::clamp(val, 0.0f, 1.0f);
+    }
+
+    if (paramsObj->hasProperty("arp_enabled")) {
+        preset.parameters.arpEnabled = static_cast<bool>(paramsObj->getProperty("arp_enabled"));
+    }
+
+    if (paramsObj->hasProperty("arp_mode")) {
+        int val = static_cast<int>(paramsObj->getProperty("arp_mode"));
+        preset.parameters.arpMode = std::clamp(val, 0, 3);
+    }
+
+    if (paramsObj->hasProperty("arp_rate")) {
+        int val = static_cast<int>(paramsObj->getProperty("arp_rate"));
+        preset.parameters.arpRate = std::clamp(val, 0, 2);
+    }
+
+    if (paramsObj->hasProperty("arp_gate")) {
+        float val = static_cast<float>(paramsObj->getProperty("arp_gate"));
+        preset.parameters.arpGate = std::clamp(val, 0.1f, 1.0f);
+    }
+
     if (paramsObj->hasProperty("master_gain_db")) {
         float val = static_cast<float>(paramsObj->getProperty("master_gain_db"));
         preset.parameters.masterGainDb = std::clamp(val, -60.0f, 12.0f);
@@ -159,6 +253,70 @@ Preset PresetSerializer::fromAPVTS(const parameters::AudioProcessorValueTreeStat
     if (detuneParam != nullptr)
         preset.parameters.detuneCents = *detuneParam;
 
+    auto* chorusMixParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::chorusMix));
+    if (chorusMixParam != nullptr)
+        preset.parameters.chorusMix = *chorusMixParam;
+
+    auto* chorusRateParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::chorusRate));
+    if (chorusRateParam != nullptr)
+        preset.parameters.chorusRateHz = *chorusRateParam;
+
+    auto* chorusDepthParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::chorusDepth));
+    if (chorusDepthParam != nullptr)
+        preset.parameters.chorusDepth = *chorusDepthParam;
+
+    auto* delayMixParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::delayMix));
+    if (delayMixParam != nullptr)
+        preset.parameters.delayMix = *delayMixParam;
+
+    auto* delayFeedbackParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::delayFeedback));
+    if (delayFeedbackParam != nullptr)
+        preset.parameters.delayFeedback = *delayFeedbackParam;
+
+    auto* delayTimeMsParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::delayTimeMs));
+    if (delayTimeMsParam != nullptr)
+        preset.parameters.delayTimeMs = *delayTimeMsParam;
+
+    auto* delaySyncParam = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(parameters::ids::delaySync));
+    if (delaySyncParam != nullptr)
+        preset.parameters.delaySync = *delaySyncParam;
+
+    auto* delaySyncRateParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::delaySyncRate));
+    if (delaySyncRateParam != nullptr)
+        preset.parameters.delaySyncRate = delaySyncRateParam->getIndex();
+
+    auto* reverbMixParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::reverbMix));
+    if (reverbMixParam != nullptr)
+        preset.parameters.reverbMix = *reverbMixParam;
+
+    auto* reverbRoomSizeParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::reverbRoomSize));
+    if (reverbRoomSizeParam != nullptr)
+        preset.parameters.reverbRoomSize = *reverbRoomSizeParam;
+
+    auto* reverbDampingParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::reverbDamping));
+    if (reverbDampingParam != nullptr)
+        preset.parameters.reverbDamping = *reverbDampingParam;
+
+    auto* reverbWidthParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::reverbWidth));
+    if (reverbWidthParam != nullptr)
+        preset.parameters.reverbWidth = *reverbWidthParam;
+
+    auto* arpEnabledParam = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(parameters::ids::arpEnabled));
+    if (arpEnabledParam != nullptr)
+        preset.parameters.arpEnabled = *arpEnabledParam;
+
+    auto* arpModeParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::arpMode));
+    if (arpModeParam != nullptr)
+        preset.parameters.arpMode = arpModeParam->getIndex();
+
+    auto* arpRateParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::arpRate));
+    if (arpRateParam != nullptr)
+        preset.parameters.arpRate = arpRateParam->getIndex();
+
+    auto* arpGateParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::arpGate));
+    if (arpGateParam != nullptr)
+        preset.parameters.arpGate = *arpGateParam;
+
     return preset;
 }
 
@@ -182,6 +340,70 @@ bool PresetSerializer::applyToAPVTS(const Preset& preset, parameters::AudioProce
     auto* detuneParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::detune));
     if (detuneParam != nullptr)
         *detuneParam = preset.parameters.detuneCents;
+
+    auto* chorusMixParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::chorusMix));
+    if (chorusMixParam != nullptr)
+        *chorusMixParam = preset.parameters.chorusMix;
+
+    auto* chorusRateParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::chorusRate));
+    if (chorusRateParam != nullptr)
+        *chorusRateParam = preset.parameters.chorusRateHz;
+
+    auto* chorusDepthParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::chorusDepth));
+    if (chorusDepthParam != nullptr)
+        *chorusDepthParam = preset.parameters.chorusDepth;
+
+    auto* delayMixParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::delayMix));
+    if (delayMixParam != nullptr)
+        *delayMixParam = preset.parameters.delayMix;
+
+    auto* delayFeedbackParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::delayFeedback));
+    if (delayFeedbackParam != nullptr)
+        *delayFeedbackParam = preset.parameters.delayFeedback;
+
+    auto* delayTimeMsParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::delayTimeMs));
+    if (delayTimeMsParam != nullptr)
+        *delayTimeMsParam = preset.parameters.delayTimeMs;
+
+    auto* delaySyncParam = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(parameters::ids::delaySync));
+    if (delaySyncParam != nullptr)
+        *delaySyncParam = preset.parameters.delaySync;
+
+    auto* delaySyncRateParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::delaySyncRate));
+    if (delaySyncRateParam != nullptr)
+        *delaySyncRateParam = preset.parameters.delaySyncRate;
+
+    auto* reverbMixParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::reverbMix));
+    if (reverbMixParam != nullptr)
+        *reverbMixParam = preset.parameters.reverbMix;
+
+    auto* reverbRoomSizeParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::reverbRoomSize));
+    if (reverbRoomSizeParam != nullptr)
+        *reverbRoomSizeParam = preset.parameters.reverbRoomSize;
+
+    auto* reverbDampingParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::reverbDamping));
+    if (reverbDampingParam != nullptr)
+        *reverbDampingParam = preset.parameters.reverbDamping;
+
+    auto* reverbWidthParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::reverbWidth));
+    if (reverbWidthParam != nullptr)
+        *reverbWidthParam = preset.parameters.reverbWidth;
+
+    auto* arpEnabledParam = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(parameters::ids::arpEnabled));
+    if (arpEnabledParam != nullptr)
+        *arpEnabledParam = preset.parameters.arpEnabled;
+
+    auto* arpModeParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::arpMode));
+    if (arpModeParam != nullptr)
+        *arpModeParam = preset.parameters.arpMode;
+
+    auto* arpRateParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::arpRate));
+    if (arpRateParam != nullptr)
+        *arpRateParam = preset.parameters.arpRate;
+
+    auto* arpGateParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::arpGate));
+    if (arpGateParam != nullptr)
+        *arpGateParam = preset.parameters.arpGate;
 
     return true;
 }

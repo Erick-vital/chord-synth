@@ -8,8 +8,12 @@
 
 #include "dsp/ChordSound.h"
 #include "dsp/ChordVoice.h"
+#include "dsp/Chorus.h"
 #include "dsp/Filter.h"
+#include "dsp/Reverb.h"
+#include "dsp/TempoDelay.h"
 #include "dsp/UiMidiQueue.h"
+#include "music/Arpeggiator.h"
 #include "parameters/ParameterLayout.h"
 #include <atomic>
 
@@ -78,12 +82,32 @@ private:
     static constexpr int numVoices = 16;
     dsp::ChordSynthesiser synth;
     dsp::Filter globalFilter;
+    dsp::Chorus chorus;
+    dsp::TempoDelay delay;
+    dsp::Reverb reverb;
+    music::Arpeggiator arpeggiator;
     dsp::UiMidiQueue uiMidiQueue;
     parameters::AudioProcessorValueTreeState apvts;
     std::atomic<float>* waveformParameter{nullptr};
     std::atomic<float>* cutoffParameter{nullptr};
     std::atomic<float>* resonanceParameter{nullptr};
     std::atomic<float>* detuneParameter{nullptr};
+    std::atomic<float>* chorusMixParameter{nullptr};
+    std::atomic<float>* chorusRateParameter{nullptr};
+    std::atomic<float>* chorusDepthParameter{nullptr};
+    std::atomic<float>* delayMixParameter{nullptr};
+    std::atomic<float>* delayFeedbackParameter{nullptr};
+    std::atomic<float>* delayTimeMsParameter{nullptr};
+    std::atomic<float>* delaySyncParameter{nullptr};
+    std::atomic<float>* delaySyncRateParameter{nullptr};
+    std::atomic<float>* reverbMixParameter{nullptr};
+    std::atomic<float>* reverbRoomSizeParameter{nullptr};
+    std::atomic<float>* reverbDampingParameter{nullptr};
+    std::atomic<float>* reverbWidthParameter{nullptr};
+    std::atomic<float>* arpEnabledParameter{nullptr};
+    std::atomic<float>* arpModeParameter{nullptr};
+    std::atomic<float>* arpRateParameter{nullptr};
+    std::atomic<float>* arpGateParameter{nullptr};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessor)
 };

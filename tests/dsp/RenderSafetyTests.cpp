@@ -49,11 +49,13 @@ struct DeterministicEventGenerator {
             auto* rawCutoff = processor.getAPVTS().getRawParameterValue(parameters::ids::cutoff);
             auto* rawRes = processor.getAPVTS().getRawParameterValue(parameters::ids::resonance);
             auto* rawDetune = processor.getAPVTS().getRawParameterValue(parameters::ids::detune);
+            auto* rawChorusMix = processor.getAPVTS().getRawParameterValue(parameters::ids::chorusMix);
 
             if (rawWaveform) rawWaveform->store(static_cast<float>(waveformDist(rng)), std::memory_order_relaxed);
             if (rawCutoff) rawCutoff->store(cutoffDist(rng), std::memory_order_relaxed);
             if (rawRes) rawRes->store(resDist(rng), std::memory_order_relaxed);
             if (rawDetune) rawDetune->store(detuneDist(rng), std::memory_order_relaxed);
+            if (rawChorusMix) rawChorusMix->store(std::uniform_real_distribution<float>{0.0f, 1.0f}(rng), std::memory_order_relaxed);
         }
     }
 };
@@ -178,6 +180,13 @@ TEST_CASE("RenderSafety: Extreme parameter automation and edge values", "[dsp][s
     auto* rawCutoff = processor.getAPVTS().getRawParameterValue(parameters::ids::cutoff);
     auto* rawRes = processor.getAPVTS().getRawParameterValue(parameters::ids::resonance);
     auto* rawDetune = processor.getAPVTS().getRawParameterValue(parameters::ids::detune);
+    auto* rawChorusMix = processor.getAPVTS().getRawParameterValue(parameters::ids::chorusMix);
+    auto* rawDelayMix = processor.getAPVTS().getRawParameterValue(parameters::ids::delayMix);
+    auto* rawDelayFeedback = processor.getAPVTS().getRawParameterValue(parameters::ids::delayFeedback);
+    auto* rawDelayTime = processor.getAPVTS().getRawParameterValue(parameters::ids::delayTimeMs);
+    auto* rawReverbMix = processor.getAPVTS().getRawParameterValue(parameters::ids::reverbMix);
+    auto* rawReverbRoom = processor.getAPVTS().getRawParameterValue(parameters::ids::reverbRoomSize);
+    auto* rawReverbDamp = processor.getAPVTS().getRawParameterValue(parameters::ids::reverbDamping);
 
     juce::AudioBuffer<float> buffer(2, 128);
     juce::MidiBuffer midi;
@@ -199,6 +208,13 @@ TEST_CASE("RenderSafety: Extreme parameter automation and edge values", "[dsp][s
         if (rawRes) rawRes->store(extremeResonances[i % extremeResonances.size()], std::memory_order_relaxed);
         if (rawDetune) rawDetune->store(extremeDetunes[i % extremeDetunes.size()], std::memory_order_relaxed);
         if (rawWaveform) rawWaveform->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
+        if (rawChorusMix) rawChorusMix->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
+        if (rawDelayMix) rawDelayMix->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
+        if (rawDelayFeedback) rawDelayFeedback->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
+        if (rawDelayTime) rawDelayTime->store(extremeCutoffs[i], std::memory_order_relaxed);
+        if (rawReverbMix) rawReverbMix->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
+        if (rawReverbRoom) rawReverbRoom->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
+        if (rawReverbDamp) rawReverbDamp->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
 
         buffer.clear();
         processor.processBlock(buffer, midi);

@@ -318,6 +318,516 @@ TEST_CASE("Legacy state without detune parameter restores new default (7 cents)"
     REQUIRE(static_cast<float>(*detune) == Catch::Approx(7.0f));
 }
 
+TEST_CASE("Chorus parameters have stable continuous automatable contracts and persist",
+          "[parameters][chorus]") {
+    chordsynth::ChordSynthAudioProcessor processor;
+    auto& apvts = processor.getAPVTS();
+
+    auto* chorusMix = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::chorusMix));
+    auto* chorusRate = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::chorusRate));
+    auto* chorusDepth = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::chorusDepth));
+
+    REQUIRE(chorusMix != nullptr);
+    REQUIRE(chorusRate != nullptr);
+    REQUIRE(chorusDepth != nullptr);
+
+    REQUIRE(chorusMix->getParameterID() == parameters::ids::chorusMix);
+    REQUIRE(chorusMix->getVersionHint() == parameters::chorusMixParameterVersion);
+    REQUIRE(chorusMix->name == parameters::names::chorusMix);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*chorusMix).isAutomatable());
+    REQUIRE(static_cast<float>(*chorusMix) == Catch::Approx(0.0f));
+
+    REQUIRE(chorusRate->getParameterID() == parameters::ids::chorusRate);
+    REQUIRE(chorusRate->getVersionHint() == parameters::chorusRateParameterVersion);
+    REQUIRE(chorusRate->name == parameters::names::chorusRate);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*chorusRate).isAutomatable());
+    REQUIRE(static_cast<float>(*chorusRate) == Catch::Approx(1.0f));
+
+    REQUIRE(chorusDepth->getParameterID() == parameters::ids::chorusDepth);
+    REQUIRE(chorusDepth->getVersionHint() == parameters::chorusDepthParameterVersion);
+    REQUIRE(chorusDepth->name == parameters::names::chorusDepth);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*chorusDepth).isAutomatable());
+    REQUIRE(static_cast<float>(*chorusDepth) == Catch::Approx(0.25f));
+
+    *chorusMix = 0.75f;
+    *chorusRate = 2.5f;
+    *chorusDepth = 0.8f;
+
+    juce::MemoryBlock stateBlock;
+    processor.getStateInformation(stateBlock);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    restored.setStateInformation(stateBlock.getData(), static_cast<int>(stateBlock.getSize()));
+
+    auto* restoredMix = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::chorusMix));
+    auto* restoredRate = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::chorusRate));
+    auto* restoredDepth = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::chorusDepth));
+
+    REQUIRE(restoredMix != nullptr);
+    REQUIRE(restoredRate != nullptr);
+    REQUIRE(restoredDepth != nullptr);
+    REQUIRE(static_cast<float>(*restoredMix) == Catch::Approx(0.75f));
+    REQUIRE(static_cast<float>(*restoredRate) == Catch::Approx(2.5f));
+    REQUIRE(static_cast<float>(*restoredDepth) == Catch::Approx(0.8f));
+}
+
+TEST_CASE("Legacy state without chorus parameters restores new defaults",
+          "[parameters][chorus][legacy]") {
+    chordsynth::ChordSynthAudioProcessor legacySource;
+    auto* key = dynamic_cast<juce::AudioParameterChoice*>(
+        legacySource.getAPVTS().getParameter(parameters::ids::key));
+    if (key != nullptr) *key = 5;
+
+    auto legacyState = legacySource.getAPVTS().copyState();
+    for (int i = legacyState.getNumChildren() - 1; i >= 0; --i) {
+        auto child = legacyState.getChild(i);
+        const auto id = child.getProperty("id").toString();
+        if (id == parameters::ids::chorusMix || id == parameters::ids::chorusRate || id == parameters::ids::chorusDepth)
+            legacyState.removeChild(i, nullptr);
+    }
+
+    std::unique_ptr<juce::XmlElement> xml(legacyState.createXml());
+    juce::MemoryBlock block;
+    juce::AudioProcessor::copyXmlToBinary(*xml, block);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    auto* mix = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::chorusMix));
+    auto* rate = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::chorusRate));
+    auto* depth = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::chorusDepth));
+    REQUIRE(mix != nullptr);
+    REQUIRE(rate != nullptr);
+    REQUIRE(depth != nullptr);
+
+    // Set non-defaults before loading
+    *mix = 0.9f;
+    *rate = 5.0f;
+    *depth = 0.9f;
+
+    restored.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+
+    REQUIRE(static_cast<float>(*mix) == Catch::Approx(0.0f));
+    REQUIRE(static_cast<float>(*rate) == Catch::Approx(1.0f));
+    REQUIRE(static_cast<float>(*depth) == Catch::Approx(0.25f));
+
+    auto* restoredKey = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::key));
+    REQUIRE(restoredKey != nullptr);
+    REQUIRE(restoredKey->getIndex() == 5);
+}
+
+TEST_CASE("Delay parameters have stable continuous automatable contracts and persist",
+          "[parameters][delay]") {
+    chordsynth::ChordSynthAudioProcessor processor;
+    auto& apvts = processor.getAPVTS();
+
+    auto* delayMix = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::delayMix));
+    auto* delayFeedback = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::delayFeedback));
+    auto* delayTimeMs = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::delayTimeMs));
+    auto* delaySync = dynamic_cast<juce::AudioParameterBool*>(
+        apvts.getParameter(parameters::ids::delaySync));
+    auto* delaySyncRate = dynamic_cast<juce::AudioParameterChoice*>(
+        apvts.getParameter(parameters::ids::delaySyncRate));
+
+    REQUIRE(delayMix != nullptr);
+    REQUIRE(delayFeedback != nullptr);
+    REQUIRE(delayTimeMs != nullptr);
+    REQUIRE(delaySync != nullptr);
+    REQUIRE(delaySyncRate != nullptr);
+
+    REQUIRE(delayMix->getParameterID() == parameters::ids::delayMix);
+    REQUIRE(delayMix->getVersionHint() == parameters::delayMixParameterVersion);
+    REQUIRE(delayMix->name == parameters::names::delayMix);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*delayMix).isAutomatable());
+    REQUIRE(static_cast<float>(*delayMix) == Catch::Approx(0.0f));
+
+    REQUIRE(delayFeedback->getParameterID() == parameters::ids::delayFeedback);
+    REQUIRE(delayFeedback->getVersionHint() == parameters::delayFeedbackParameterVersion);
+    REQUIRE(delayFeedback->name == parameters::names::delayFeedback);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*delayFeedback).isAutomatable());
+    REQUIRE(static_cast<float>(*delayFeedback) == Catch::Approx(0.3f));
+
+    REQUIRE(delayTimeMs->getParameterID() == parameters::ids::delayTimeMs);
+    REQUIRE(delayTimeMs->getVersionHint() == parameters::delayTimeMsParameterVersion);
+    REQUIRE(delayTimeMs->name == parameters::names::delayTimeMs);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*delayTimeMs).isAutomatable());
+    REQUIRE(static_cast<float>(*delayTimeMs) == Catch::Approx(250.0f));
+
+    REQUIRE(delaySync->getParameterID() == parameters::ids::delaySync);
+    REQUIRE(delaySync->getVersionHint() == parameters::delaySyncParameterVersion);
+    REQUIRE(delaySync->name == parameters::names::delaySync);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*delaySync).isAutomatable());
+    REQUIRE(*delaySync == true);
+
+    REQUIRE(delaySyncRate->getParameterID() == parameters::ids::delaySyncRate);
+    REQUIRE(delaySyncRate->getVersionHint() == parameters::delaySyncRateParameterVersion);
+    REQUIRE(delaySyncRate->name == parameters::names::delaySyncRate);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*delaySyncRate).isAutomatable());
+    REQUIRE(delaySyncRate->getIndex() == 0);
+
+    *delayMix = 0.6f;
+    *delayFeedback = 0.45f;
+    *delayTimeMs = 350.0f;
+    *delaySync = false;
+    *delaySyncRate = 1;
+
+    juce::MemoryBlock stateBlock;
+    processor.getStateInformation(stateBlock);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    restored.setStateInformation(stateBlock.getData(), static_cast<int>(stateBlock.getSize()));
+
+    auto* restoredMix = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::delayMix));
+    auto* restoredFeedback = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::delayFeedback));
+    auto* restoredTimeMs = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::delayTimeMs));
+    auto* restoredSync = dynamic_cast<juce::AudioParameterBool*>(
+        restored.getAPVTS().getParameter(parameters::ids::delaySync));
+    auto* restoredSyncRate = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::delaySyncRate));
+
+    REQUIRE(restoredMix != nullptr);
+    REQUIRE(restoredFeedback != nullptr);
+    REQUIRE(restoredTimeMs != nullptr);
+    REQUIRE(restoredSync != nullptr);
+    REQUIRE(restoredSyncRate != nullptr);
+
+    REQUIRE(static_cast<float>(*restoredMix) == Catch::Approx(0.6f));
+    REQUIRE(static_cast<float>(*restoredFeedback) == Catch::Approx(0.45f));
+    REQUIRE(static_cast<float>(*restoredTimeMs) == Catch::Approx(350.0f));
+    REQUIRE(*restoredSync == false);
+    REQUIRE(restoredSyncRate->getIndex() == 1);
+}
+
+TEST_CASE("Legacy state without delay parameters restores new defaults",
+          "[parameters][delay][legacy]") {
+    chordsynth::ChordSynthAudioProcessor legacySource;
+    auto* key = dynamic_cast<juce::AudioParameterChoice*>(
+        legacySource.getAPVTS().getParameter(parameters::ids::key));
+    if (key != nullptr) *key = 7;
+
+    auto legacyState = legacySource.getAPVTS().copyState();
+    for (int i = legacyState.getNumChildren() - 1; i >= 0; --i) {
+        auto child = legacyState.getChild(i);
+        const auto id = child.getProperty("id").toString();
+        if (id == parameters::ids::delayMix || id == parameters::ids::delayFeedback ||
+            id == parameters::ids::delayTimeMs || id == parameters::ids::delaySync ||
+            id == parameters::ids::delaySyncRate)
+            legacyState.removeChild(i, nullptr);
+    }
+
+    std::unique_ptr<juce::XmlElement> xml(legacyState.createXml());
+    juce::MemoryBlock block;
+    juce::AudioProcessor::copyXmlToBinary(*xml, block);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    auto* mix = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::delayMix));
+    auto* feedback = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::delayFeedback));
+    auto* timeMs = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::delayTimeMs));
+    auto* sync = dynamic_cast<juce::AudioParameterBool*>(
+        restored.getAPVTS().getParameter(parameters::ids::delaySync));
+    auto* syncRate = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::delaySyncRate));
+
+    REQUIRE(mix != nullptr);
+    REQUIRE(feedback != nullptr);
+    REQUIRE(timeMs != nullptr);
+    REQUIRE(sync != nullptr);
+    REQUIRE(syncRate != nullptr);
+
+    // Set non-defaults before loading
+    *mix = 0.9f;
+    *feedback = 0.8f;
+    *timeMs = 900.0f;
+    *sync = false;
+    *syncRate = 2;
+
+    restored.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+
+    REQUIRE(static_cast<float>(*mix) == Catch::Approx(0.0f));
+    REQUIRE(static_cast<float>(*feedback) == Catch::Approx(0.3f));
+    REQUIRE(static_cast<float>(*timeMs) == Catch::Approx(250.0f));
+    REQUIRE(*sync == true);
+    REQUIRE(syncRate->getIndex() == 0);
+
+    auto* restoredKey = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::key));
+    REQUIRE(restoredKey != nullptr);
+    REQUIRE(restoredKey->getIndex() == 7);
+}
+
+TEST_CASE("Reverb parameters have stable continuous automatable contracts and persist",
+          "[parameters][reverb]") {
+    chordsynth::ChordSynthAudioProcessor processor;
+    auto& apvts = processor.getAPVTS();
+
+    auto* reverbMix = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::reverbMix));
+    auto* reverbRoomSize = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::reverbRoomSize));
+    auto* reverbDamping = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::reverbDamping));
+    auto* reverbWidth = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::reverbWidth));
+
+    REQUIRE(reverbMix != nullptr);
+    REQUIRE(reverbRoomSize != nullptr);
+    REQUIRE(reverbDamping != nullptr);
+    REQUIRE(reverbWidth != nullptr);
+
+    REQUIRE(reverbMix->getParameterID() == parameters::ids::reverbMix);
+    REQUIRE(reverbMix->getVersionHint() == parameters::reverbMixParameterVersion);
+    REQUIRE(reverbMix->name == parameters::names::reverbMix);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*reverbMix).isAutomatable());
+    REQUIRE(static_cast<float>(*reverbMix) == Catch::Approx(0.0f));
+
+    REQUIRE(reverbRoomSize->getParameterID() == parameters::ids::reverbRoomSize);
+    REQUIRE(reverbRoomSize->getVersionHint() == parameters::reverbRoomSizeParameterVersion);
+    REQUIRE(reverbRoomSize->name == parameters::names::reverbRoomSize);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*reverbRoomSize).isAutomatable());
+    REQUIRE(static_cast<float>(*reverbRoomSize) == Catch::Approx(0.5f));
+
+    REQUIRE(reverbDamping->getParameterID() == parameters::ids::reverbDamping);
+    REQUIRE(reverbDamping->getVersionHint() == parameters::reverbDampingParameterVersion);
+    REQUIRE(reverbDamping->name == parameters::names::reverbDamping);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*reverbDamping).isAutomatable());
+    REQUIRE(static_cast<float>(*reverbDamping) == Catch::Approx(0.5f));
+
+    REQUIRE(reverbWidth->getParameterID() == parameters::ids::reverbWidth);
+    REQUIRE(reverbWidth->getVersionHint() == parameters::reverbWidthParameterVersion);
+    REQUIRE(reverbWidth->name == parameters::names::reverbWidth);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*reverbWidth).isAutomatable());
+    REQUIRE(static_cast<float>(*reverbWidth) == Catch::Approx(1.0f));
+
+    *reverbMix = 0.4f;
+    *reverbRoomSize = 0.75f;
+    *reverbDamping = 0.3f;
+    *reverbWidth = 0.8f;
+
+    juce::MemoryBlock stateBlock;
+    processor.getStateInformation(stateBlock);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    restored.setStateInformation(stateBlock.getData(), static_cast<int>(stateBlock.getSize()));
+
+    auto* restoredMix = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::reverbMix));
+    auto* restoredRoomSize = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::reverbRoomSize));
+    auto* restoredDamping = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::reverbDamping));
+    auto* restoredWidth = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::reverbWidth));
+
+    REQUIRE(restoredMix != nullptr);
+    REQUIRE(restoredRoomSize != nullptr);
+    REQUIRE(restoredDamping != nullptr);
+    REQUIRE(restoredWidth != nullptr);
+
+    REQUIRE(static_cast<float>(*restoredMix) == Catch::Approx(0.4f));
+    REQUIRE(static_cast<float>(*restoredRoomSize) == Catch::Approx(0.75f));
+    REQUIRE(static_cast<float>(*restoredDamping) == Catch::Approx(0.3f));
+    REQUIRE(static_cast<float>(*restoredWidth) == Catch::Approx(0.8f));
+}
+
+TEST_CASE("Legacy state without reverb parameters restores new defaults",
+          "[parameters][reverb][legacy]") {
+    chordsynth::ChordSynthAudioProcessor legacySource;
+    auto* key = dynamic_cast<juce::AudioParameterChoice*>(
+        legacySource.getAPVTS().getParameter(parameters::ids::key));
+    if (key != nullptr) *key = 9;
+
+    auto legacyState = legacySource.getAPVTS().copyState();
+    for (int i = legacyState.getNumChildren() - 1; i >= 0; --i) {
+        auto child = legacyState.getChild(i);
+        const auto id = child.getProperty("id").toString();
+        if (id == parameters::ids::reverbMix || id == parameters::ids::reverbRoomSize ||
+            id == parameters::ids::reverbDamping || id == parameters::ids::reverbWidth)
+            legacyState.removeChild(i, nullptr);
+    }
+
+    std::unique_ptr<juce::XmlElement> xml(legacyState.createXml());
+    juce::MemoryBlock block;
+    juce::AudioProcessor::copyXmlToBinary(*xml, block);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    auto* mix = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::reverbMix));
+    auto* roomSize = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::reverbRoomSize));
+    auto* damping = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::reverbDamping));
+    auto* width = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::reverbWidth));
+
+    REQUIRE(mix != nullptr);
+    REQUIRE(roomSize != nullptr);
+    REQUIRE(damping != nullptr);
+    REQUIRE(width != nullptr);
+
+    // Set non-defaults before loading
+    *mix = 0.9f;
+    *roomSize = 0.1f;
+    *damping = 0.9f;
+    *width = 0.1f;
+
+    restored.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+
+    REQUIRE(static_cast<float>(*mix) == Catch::Approx(0.0f));
+    REQUIRE(static_cast<float>(*roomSize) == Catch::Approx(0.5f));
+    REQUIRE(static_cast<float>(*damping) == Catch::Approx(0.5f));
+    REQUIRE(static_cast<float>(*width) == Catch::Approx(1.0f));
+
+    auto* restoredKey = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::key));
+    REQUIRE(restoredKey != nullptr);
+    REQUIRE(restoredKey->getIndex() == 9);
+}
+
+TEST_CASE("Arpeggiator parameters have stable continuous automatable contracts and persist",
+          "[parameters][arp]") {
+    chordsynth::ChordSynthAudioProcessor processor;
+    auto& apvts = processor.getAPVTS();
+
+    auto* arpEnabled = dynamic_cast<juce::AudioParameterBool*>(
+        apvts.getParameter(parameters::ids::arpEnabled));
+    auto* arpMode = dynamic_cast<juce::AudioParameterChoice*>(
+        apvts.getParameter(parameters::ids::arpMode));
+    auto* arpRate = dynamic_cast<juce::AudioParameterChoice*>(
+        apvts.getParameter(parameters::ids::arpRate));
+    auto* arpGate = dynamic_cast<juce::AudioParameterFloat*>(
+        apvts.getParameter(parameters::ids::arpGate));
+
+    REQUIRE(arpEnabled != nullptr);
+    REQUIRE(arpMode != nullptr);
+    REQUIRE(arpRate != nullptr);
+    REQUIRE(arpGate != nullptr);
+
+    REQUIRE(arpEnabled->getParameterID() == parameters::ids::arpEnabled);
+    REQUIRE(arpEnabled->getVersionHint() == parameters::arpEnabledParameterVersion);
+    REQUIRE(arpEnabled->name == parameters::names::arpEnabled);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*arpEnabled).isAutomatable());
+    REQUIRE(*arpEnabled == false);
+
+    REQUIRE(arpMode->getParameterID() == parameters::ids::arpMode);
+    REQUIRE(arpMode->getVersionHint() == parameters::arpModeParameterVersion);
+    REQUIRE(arpMode->name == parameters::names::arpMode);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*arpMode).isAutomatable());
+    REQUIRE(arpMode->getIndex() == 0);
+
+    REQUIRE(arpRate->getParameterID() == parameters::ids::arpRate);
+    REQUIRE(arpRate->getVersionHint() == parameters::arpRateParameterVersion);
+    REQUIRE(arpRate->name == parameters::names::arpRate);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*arpRate).isAutomatable());
+    REQUIRE(arpRate->getIndex() == 1);
+
+    REQUIRE(arpGate->getParameterID() == parameters::ids::arpGate);
+    REQUIRE(arpGate->getVersionHint() == parameters::arpGateParameterVersion);
+    REQUIRE(arpGate->name == parameters::names::arpGate);
+    REQUIRE(static_cast<const juce::AudioProcessorParameter&>(*arpGate).isAutomatable());
+    REQUIRE(static_cast<float>(*arpGate) == Catch::Approx(0.8f));
+
+    *arpEnabled = true;
+    *arpMode = 2; // Up/Down
+    *arpRate = 2; // 1/16
+    *arpGate = 0.5f;
+
+    juce::MemoryBlock stateBlock;
+    processor.getStateInformation(stateBlock);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    restored.setStateInformation(stateBlock.getData(), static_cast<int>(stateBlock.getSize()));
+
+    auto* restoredEnabled = dynamic_cast<juce::AudioParameterBool*>(
+        restored.getAPVTS().getParameter(parameters::ids::arpEnabled));
+    auto* restoredMode = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::arpMode));
+    auto* restoredRate = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::arpRate));
+    auto* restoredGate = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::arpGate));
+
+    REQUIRE(restoredEnabled != nullptr);
+    REQUIRE(restoredMode != nullptr);
+    REQUIRE(restoredRate != nullptr);
+    REQUIRE(restoredGate != nullptr);
+
+    REQUIRE(*restoredEnabled == true);
+    REQUIRE(restoredMode->getIndex() == 2);
+    REQUIRE(restoredRate->getIndex() == 2);
+    REQUIRE(static_cast<float>(*restoredGate) == Catch::Approx(0.5f));
+}
+
+TEST_CASE("Legacy state without arpeggiator parameters restores new defaults",
+          "[parameters][arp][legacy]") {
+    chordsynth::ChordSynthAudioProcessor legacySource;
+    auto* key = dynamic_cast<juce::AudioParameterChoice*>(
+        legacySource.getAPVTS().getParameter(parameters::ids::key));
+    if (key != nullptr) *key = 11;
+
+    auto legacyState = legacySource.getAPVTS().copyState();
+    for (int i = legacyState.getNumChildren() - 1; i >= 0; --i) {
+        auto child = legacyState.getChild(i);
+        const auto id = child.getProperty("id").toString();
+        if (id == parameters::ids::arpEnabled || id == parameters::ids::arpMode ||
+            id == parameters::ids::arpRate || id == parameters::ids::arpGate)
+            legacyState.removeChild(i, nullptr);
+    }
+
+    std::unique_ptr<juce::XmlElement> xml(legacyState.createXml());
+    juce::MemoryBlock block;
+    juce::AudioProcessor::copyXmlToBinary(*xml, block);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    auto* enabled = dynamic_cast<juce::AudioParameterBool*>(
+        restored.getAPVTS().getParameter(parameters::ids::arpEnabled));
+    auto* mode = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::arpMode));
+    auto* rate = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::arpRate));
+    auto* gate = dynamic_cast<juce::AudioParameterFloat*>(
+        restored.getAPVTS().getParameter(parameters::ids::arpGate));
+
+    REQUIRE(enabled != nullptr);
+    REQUIRE(mode != nullptr);
+    REQUIRE(rate != nullptr);
+    REQUIRE(gate != nullptr);
+
+    // Set non-defaults before loading
+    *enabled = true;
+    *mode = 3;
+    *rate = 0;
+    *gate = 0.2f;
+
+    restored.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+
+    REQUIRE(*enabled == false);
+    REQUIRE(mode->getIndex() == 0);
+    REQUIRE(rate->getIndex() == 1);
+    REQUIRE(static_cast<float>(*gate) == Catch::Approx(0.8f));
+
+    auto* restoredKey = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::key));
+    REQUIRE(restoredKey != nullptr);
+    REQUIRE(restoredKey->getIndex() == 11);
+}
+
 TEST_CASE("Processor handles malformed, null, or wrong-type state blobs safely",
           "[parameters][robustness]") {
     ChordSynthAudioProcessor processor;

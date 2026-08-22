@@ -2,12 +2,17 @@ include(FetchContent)
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(ChordSynthTests
+    dsp/ChorusTests.cpp
     dsp/ChordVoiceTests.cpp
     dsp/FilterTests.cpp
     dsp/OscillatorTests.cpp
     dsp/RenderSafetyTests.cpp
+    dsp/ReverbTests.cpp
+    dsp/TempoDelayTests.cpp
     dsp/UiMidiQueueTests.cpp
+    music/ArpeggiatorTests.cpp
     music/MajorScaleChordMapTests.cpp
+    music/MusicalClockTests.cpp
     music/NoteMathTests.cpp
     parameters/ParameterLayoutTests.cpp
     plugin/ProcessorSmokeTests.cpp
