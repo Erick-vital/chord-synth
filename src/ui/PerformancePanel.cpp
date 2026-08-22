@@ -74,7 +74,7 @@ PerformancePanel::PerformancePanel(
                 const auto& chord = voicer.voiceChord(
                     performanceController.getTonic(),
                     active->degree,
-                    config.getVoicingSpec(performanceController.getScene(), active->degree));
+                    config.getSpec(performanceController.getScene(), active->degree));
 
                 juce::String notesStr;
                 for (int n = 0; n < chord.notes.size(); ++n) {
@@ -163,7 +163,7 @@ void PerformancePanel::selectScene(int sceneIndex)
         const auto& chord = voicer.voiceChord(
             performanceController.getTonic(),
             active->degree,
-            config.getVoicingSpec(performanceController.getScene(), active->degree));
+            config.getSpec(performanceController.getScene(), active->degree));
 
         juce::String notesStr;
         for (int n = 0; n < chord.notes.size(); ++n) {
@@ -192,7 +192,7 @@ void PerformancePanel::updateChordKeys()
     const int currentScene = performanceController.getScene();
 
     for (int deg = 0; deg < 7; ++deg) {
-        const auto& spec = config.getVoicingSpec(currentScene, deg);
+        const auto spec = config.getSpec(currentScene, deg);
         const auto chord = voicer.voiceChord(tonic, deg, spec);
 
         auto& key = chordKeys[static_cast<std::size_t>(deg)];

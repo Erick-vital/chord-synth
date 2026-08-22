@@ -76,7 +76,7 @@ HarmonyToolbar::HarmonyToolbar(
     setRuleMode(false);
 
     // Hint label
-    hintLabel.setText("Q\xe2\x80\x93U toca acordes  \xc2\xb7  1\xe2\x80\x934 cambia voicing", juce::dontSendNotification);
+    hintLabel.setText("Q\xe2\x80\x93" "U toca acordes  \xc2\xb7  1\xe2\x80\x93" "4 cambia voicing", juce::dontSendNotification);
     hintLabel.setFont(juce::FontOptions(12.0f));
     hintLabel.setColour(juce::Label::textColourId, colors::textMuted);
     hintLabel.setJustificationType(juce::Justification::centredRight);

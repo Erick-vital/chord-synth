@@ -2,10 +2,6 @@
 #include "presets/PresetSerializer.h"
 #include <algorithm>
 
-#if JUCE_STANDALONE_APPLICATION
-#include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
-#endif
-
 namespace chordsynth {
 
 ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioProcessor& p)
@@ -21,11 +17,6 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
               loadPresetAtIndex(presetIndex);
           },
           /*onAudioSettingsClicked=*/[this]() {
-#if JUCE_STANDALONE_APPLICATION
-              if (auto* holder = juce::StandalonePluginHolder::getInstance()) {
-                  holder->showAudioSettingsDialog();
-              }
-#endif
           },
           /*isStandalone=*/JUCE_STANDALONE_APPLICATION != 0),
       harmonyToolbar(
