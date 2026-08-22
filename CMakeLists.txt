@@ -213,6 +213,8 @@ if(CHORDSYNTH_BUILD_PLUGIN)
     target_sources(ChordSynth PRIVATE
         src/parameters/ParameterLayout.cpp
         src/parameters/ParameterLayout.h
+        src/presets/PresetSerializer.cpp
+        src/presets/PresetSerializer.h
         src/plugin/PluginProcessor.cpp
         src/plugin/PluginProcessor.h
         src/plugin/PluginEditor.cpp
