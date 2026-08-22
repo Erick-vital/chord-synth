@@ -225,7 +225,9 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         src/ui/HarmonyToolbar.cpp
         src/ui/HarmonyToolbar.h
         src/ui/ChordDesignerPanel.cpp
-        src/ui/ChordDesignerPanel.h)
+        src/ui/ChordDesignerPanel.h
+        src/ui/SoundPanel.cpp
+        src/ui/SoundPanel.h)
 
 
     target_include_directories(ChordSynth PRIVATE

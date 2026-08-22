@@ -29,6 +29,7 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
           performanceController,
           p.getHarmonyState().getConfiguration(),
           chordVoicer),
+      soundPanel(p.getAPVTS()),
       chordDesignerPanel(
           p.getHarmonyState().getConfiguration(),
           chordVoicer,
@@ -68,6 +69,7 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
 
     addAndMakeVisible(harmonyToolbar);
     addAndMakeVisible(performancePanel);
+    addAndMakeVisible(soundPanel);
     addAndMakeVisible(chordDesignerPanel);
 
     setSize(1180, 760);
@@ -96,6 +98,8 @@ void ChordSynthAudioProcessorEditor::timerCallback()
             chordDesignerPanel.refresh();
         }
     }
+
+    soundPanel.updateArpControls();
 }
 
 void ChordSynthAudioProcessorEditor::paint(juce::Graphics& g)
@@ -117,10 +121,12 @@ void ChordSynthAudioProcessorEditor::resized()
 
     bounds.removeFromTop(12);
 
-    // 3. Bottom grid: ChordDesigner on the right (width ~380 px), left reserved for SoundPanel (Task 10)
+    // 3. Bottom grid: ChordDesigner on the right (width ~380 px), left is SoundPanel
     auto lowerArea = bounds;
     int designerWidth = 380;
     chordDesignerPanel.setBounds(lowerArea.removeFromRight(designerWidth));
+    lowerArea.removeFromRight(12);
+    soundPanel.setBounds(lowerArea);
 }
 
 } // namespace chordsynth

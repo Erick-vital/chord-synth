@@ -7,6 +7,7 @@
 #include "ui/HarmonyToolbar.h"
 #include "ui/PerformancePanel.h"
 #include "ui/ChordDesignerPanel.h"
+#include "ui/SoundPanel.h"
 #include "interaction/ChordPerformanceController.h"
 #include "music/DiatonicChordVoicer.h"
 
@@ -34,6 +35,7 @@ private:
     // UI Components
     ui::HarmonyToolbar harmonyToolbar;
     ui::PerformancePanel performancePanel;
+    ui::SoundPanel soundPanel;
     ui::ChordDesignerPanel chordDesignerPanel;
 
     int lastPolledKeyIndex{0};
