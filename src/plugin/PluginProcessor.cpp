@@ -305,6 +305,7 @@ juce::AudioProcessorEditor* ChordSynthAudioProcessor::createEditor()
 void ChordSynthAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
+    state.appendChild(harmonyState.toValueTree(), nullptr);
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
@@ -346,6 +347,15 @@ void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInB
         addDefaultIfMissing(parameters::ids::arpMode, 0.0f);
         addDefaultIfMissing(parameters::ids::arpRate, 1.0f);
         addDefaultIfMissing(parameters::ids::arpGate, 0.8f);
+
+        auto harmonyChild = incomingState.getChildWithName(state::stateTag);
+        if (harmonyChild.isValid()) {
+            if (!harmonyState.loadFromValueTree(harmonyChild)) {
+                harmonyState.resetToDefaults();
+            }
+        } else {
+            harmonyState.resetToDefaults();
+        }
 
         apvts.replaceState(incomingState);
     }

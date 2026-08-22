@@ -20,7 +20,8 @@ add_executable(ChordSynthTests
     music/VoicedChordTests.cpp
     parameters/ParameterLayoutTests.cpp
     plugin/ProcessorSmokeTests.cpp
-    presets/PresetSerializerTests.cpp)
+    presets/PresetSerializerTests.cpp
+    state/HarmonyStateTests.cpp)
 
 target_link_libraries(ChordSynthTests PRIVATE
     chordsynth_plugin
@@ -29,6 +30,7 @@ target_link_libraries(ChordSynthTests PRIVATE
     chordsynth_dsp
     chordsynth_music
     chordsynth_interaction
+    chordsynth_state
     chordsynth_juce_headless_test_only
     Catch2::Catch2WithMain)
 

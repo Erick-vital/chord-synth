@@ -79,6 +79,21 @@ target_link_libraries(chordsynth_music PRIVATE
 
 target_compile_features(chordsynth_music PUBLIC cxx_std_20)
 
+# Harmony State Library (Persistence and Migration)
+add_library(chordsynth_state STATIC
+    src/state/HarmonyState.h
+    src/state/HarmonyState.cpp)
+
+target_include_directories(chordsynth_state PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_link_libraries(chordsynth_state PUBLIC
+    chordsynth_music
+    PRIVATE
+    chordsynth_juce_headless_test_only)
+
+target_compile_features(chordsynth_state PUBLIC cxx_std_20)
+
 # Interaction Library (Message thread controllers)
 add_library(chordsynth_interaction STATIC
     src/interaction/ChordPerformanceController.h
@@ -167,6 +182,7 @@ target_link_libraries(chordsynth_plugin PUBLIC
     chordsynth_dsp
     chordsynth_music
     chordsynth_interaction
+    chordsynth_state
     PRIVATE
     chordsynth_juce_headless_test_only)
 
@@ -214,6 +230,7 @@ if(CHORDSYNTH_BUILD_PLUGIN)
             chordsynth_dsp
             chordsynth_music
             chordsynth_interaction
+            chordsynth_state
             juce::juce_audio_utils
             juce::juce_audio_processors
             juce::juce_gui_basics

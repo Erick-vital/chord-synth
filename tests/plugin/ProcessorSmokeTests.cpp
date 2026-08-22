@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include "plugin/PluginProcessor.h"
 #include "parameters/ParameterIds.h"
@@ -535,4 +536,100 @@ TEST_CASE("APVTS arpeggiator parameter automation reaches output rendering", "[p
     }
 
     REQUIRE(diffSum > 0.1);
+}
+
+TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip and legacy migration",
+          "[plugin][processor][state][harmony]") {
+    SECTION("Round-trip preserves both APVTS parameters and HarmonyState non-default overrides") {
+        ChordSynthAudioProcessor sourceProcessor;
+        auto* cutoff = dynamic_cast<juce::AudioParameterFloat*>(
+            sourceProcessor.getAPVTS().getParameter(parameters::ids::cutoff));
+        REQUIRE(cutoff != nullptr);
+        *cutoff = 2400.0f;
+
+        sourceProcessor.getHarmonyState().setSelectedScene(2);
+        sourceProcessor.getHarmonyState().setLiveRevoice(true);
+        sourceProcessor.getHarmonyState().setQualityRule(music::QualityRule::minor);
+        music::VoicingSpec customSpec{
+            music::ChordExtension::seventh,
+            1,
+            music::VoicingStyle::open,
+            4,
+            music::QualityRule::major
+        };
+        sourceProcessor.getHarmonyState().getConfiguration().setSpec(2, 3, customSpec); // Scene 2, IV
+
+        juce::MemoryBlock block;
+        sourceProcessor.getStateInformation(block);
+        REQUIRE(block.getSize() > 0);
+
+        ChordSynthAudioProcessor targetProcessor;
+        targetProcessor.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+
+        auto* targetCutoff = dynamic_cast<juce::AudioParameterFloat*>(
+            targetProcessor.getAPVTS().getParameter(parameters::ids::cutoff));
+        REQUIRE(targetCutoff != nullptr);
+        REQUIRE(static_cast<float>(*targetCutoff) == Catch::Approx(2400.0f));
+
+        const auto& restoredHarmony = targetProcessor.getHarmonyState();
+        REQUIRE(restoredHarmony.getSelectedScene() == 2);
+        REQUIRE(restoredHarmony.getLiveRevoice() == true);
+        REQUIRE(restoredHarmony.getQualityRule() == music::QualityRule::minor);
+        REQUIRE(restoredHarmony.getConfiguration().getSpec(2, 3) == customSpec);
+    }
+
+    SECTION("Legacy APVTS state without HarmonyState resets conflicting target state to explicit defaults") {
+        // Build a legacy APVTS state with no HarmonyState child node
+        juce::ValueTree legacyTree{parameters::stateRootType};
+        juce::ValueTree paramCutoff{"PARAM"};
+        paramCutoff.setProperty("id", parameters::ids::cutoff, nullptr);
+        paramCutoff.setProperty("value", 5500.0f, nullptr);
+        legacyTree.appendChild(paramCutoff, nullptr);
+
+        std::unique_ptr<juce::XmlElement> xml(legacyTree.createXml());
+        juce::MemoryBlock legacyBlock;
+        ChordSynthAudioProcessor::copyXmlToBinary(*xml, legacyBlock);
+
+        // Configure target processor with conflicting non-default harmony state
+        ChordSynthAudioProcessor targetProcessor;
+        targetProcessor.getHarmonyState().setSelectedScene(3);
+        targetProcessor.getHarmonyState().setLiveRevoice(true);
+        targetProcessor.getHarmonyState().setQualityRule(music::QualityRule::diminished);
+        music::VoicingSpec nonDefaultSpec{
+            music::ChordExtension::seventh, 2, music::VoicingStyle::open, 2, music::QualityRule::minor
+        };
+        targetProcessor.getHarmonyState().getConfiguration().setSpec(3, 0, nonDefaultSpec);
+
+        targetProcessor.setStateInformation(legacyBlock.getData(), static_cast<int>(legacyBlock.getSize()));
+
+        // Check that legacy parameter was restored
+        auto* targetCutoff = dynamic_cast<juce::AudioParameterFloat*>(
+            targetProcessor.getAPVTS().getParameter(parameters::ids::cutoff));
+        REQUIRE(targetCutoff != nullptr);
+        REQUIRE(static_cast<float>(*targetCutoff) == Catch::Approx(5500.0f));
+
+        // Check that harmony state migrated to clean defaults
+        const auto& restoredHarmony = targetProcessor.getHarmonyState();
+        REQUIRE(restoredHarmony.getSelectedScene() == 0);
+        REQUIRE(restoredHarmony.getLiveRevoice() == false);
+        REQUIRE(restoredHarmony.getQualityRule() == music::QualityRule::diatonic);
+        REQUIRE(restoredHarmony.getConfiguration() == music::HarmonyConfiguration{});
+    }
+
+    SECTION("Corrupted or malformed state is rejected and does not corrupt processor state") {
+        ChordSynthAudioProcessor targetProcessor;
+        targetProcessor.getHarmonyState().setSelectedScene(1);
+
+        // Null / zero size
+        targetProcessor.setStateInformation(nullptr, 0);
+        REQUIRE(targetProcessor.getHarmonyState().getSelectedScene() == 1);
+
+        // Wrong root type XML
+        juce::ValueTree badRoot{"WrongRoot"};
+        std::unique_ptr<juce::XmlElement> xml(badRoot.createXml());
+        juce::MemoryBlock badBlock;
+        ChordSynthAudioProcessor::copyXmlToBinary(*xml, badBlock);
+        targetProcessor.setStateInformation(badBlock.getData(), static_cast<int>(badBlock.getSize()));
+        REQUIRE(targetProcessor.getHarmonyState().getSelectedScene() == 1);
+    }
 }

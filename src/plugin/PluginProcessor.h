@@ -15,6 +15,7 @@
 #include "dsp/UiMidiQueue.h"
 #include "music/Arpeggiator.h"
 #include "parameters/ParameterLayout.h"
+#include "state/HarmonyState.h"
 #include <atomic>
 
 namespace chordsynth {
@@ -51,6 +52,8 @@ public:
 
     dsp::UiMidiQueue& getUiMidiQueue() noexcept { return uiMidiQueue; }
     parameters::AudioProcessorValueTreeState& getAPVTS() noexcept { return apvts; }
+    state::HarmonyState& getHarmonyState() noexcept { return harmonyState; }
+    const state::HarmonyState& getHarmonyState() const noexcept { return harmonyState; }
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -87,6 +90,7 @@ private:
     dsp::Reverb reverb;
     music::Arpeggiator arpeggiator;
     dsp::UiMidiQueue uiMidiQueue;
+    state::HarmonyState harmonyState;
     parameters::AudioProcessorValueTreeState apvts;
     std::atomic<float>* waveformParameter{nullptr};
     std::atomic<float>* cutoffParameter{nullptr};
