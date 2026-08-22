@@ -215,7 +215,11 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         src/plugin/PluginProcessor.cpp
         src/plugin/PluginProcessor.h
         src/plugin/PluginEditor.cpp
-        src/plugin/PluginEditor.h)
+        src/plugin/PluginEditor.h
+        src/ui/ChordSynthLookAndFeel.cpp
+        src/ui/ChordSynthLookAndFeel.h
+        src/ui/ChordKeyComponent.cpp
+        src/ui/ChordKeyComponent.h)
 
     target_include_directories(ChordSynth PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src)
