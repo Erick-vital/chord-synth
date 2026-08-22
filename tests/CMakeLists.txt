@@ -81,6 +81,14 @@ add_test(
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/UiSyntaxVerificationContract.cmake)
 
 add_test(
+    NAME StandaloneSyntaxVerificationContract
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DCMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/StandaloneSyntaxVerificationContract.cmake)
+
+add_test(
     NAME GuiSmokePluginDefinitionsContract
     COMMAND ${CMAKE_COMMAND}
         -DSOURCE_DIR=${CMAKE_SOURCE_DIR}

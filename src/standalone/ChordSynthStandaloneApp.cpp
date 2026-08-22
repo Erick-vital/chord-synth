@@ -1,3 +1,7 @@
+// juce_StandaloneFilterWindow is an internal standalone implementation header.
+// It assumes the public audio utility module has already supplied its GUI, device,
+// processor, core, and standard-library declarations (as JUCE's wrapper does).
+#include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
 
 namespace juce
