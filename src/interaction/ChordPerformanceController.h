@@ -46,6 +46,12 @@ public:
     void setTonic(int newTonic) noexcept;
     [[nodiscard]] int getTonic() const noexcept { return tonic; }
 
+    void setScale(music::Scale newScale) noexcept { scale = newScale; }
+    [[nodiscard]] music::Scale getScale() const noexcept { return scale; }
+
+    void setDiatonicMode(bool enabled) noexcept { diatonicMode = enabled; }
+    [[nodiscard]] bool isDiatonicMode() const noexcept { return diatonicMode; }
+
     void setScene(int newSceneIndex) noexcept;
     [[nodiscard]] int getScene() const noexcept { return currentScene; }
 
@@ -73,6 +79,8 @@ private:
     MidiBatchOutput& output;
 
     int tonic{0}; // 0 = C
+    music::Scale scale{music::Scale::major};
+    bool diatonicMode{true};
     int currentScene{0}; // 0..3 (A..D)
     bool liveRevoice{false};
     int midiChannel{1};

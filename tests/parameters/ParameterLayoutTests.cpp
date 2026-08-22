@@ -91,6 +91,33 @@ TEST_CASE("APVTS key parameter contract and persistence", "[parameters]") {
     }
 }
 
+TEST_CASE("APVTS scale parameter exposes and persists major and natural minor", "[parameters][scale]") {
+    ChordSynthAudioProcessor processor;
+    auto& apvts = processor.getAPVTS();
+    auto* scale = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::scale));
+    REQUIRE(scale != nullptr);
+
+    const juce::StringArray expectedChoices{"Mayor", "Menor natural"};
+    const juce::AudioProcessorParameter& hostParameter = *scale;
+    REQUIRE(scale->getParameterID() == parameters::ids::scale);
+    REQUIRE(scale->getVersionHint() == parameters::scaleParameterVersion);
+    REQUIRE(scale->name == parameters::names::scale);
+    REQUIRE(scale->choices == expectedChoices);
+    REQUIRE(hostParameter.isDiscrete());
+    REQUIRE(hostParameter.getNumSteps() == 2);
+    REQUIRE(scale->getIndex() == 0);
+
+    *scale = 1;
+    juce::MemoryBlock stateBlock;
+    processor.getStateInformation(stateBlock);
+    ChordSynthAudioProcessor restored;
+    restored.setStateInformation(stateBlock.getData(), static_cast<int>(stateBlock.getSize()));
+    auto* restoredScale = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::scale));
+    REQUIRE(restoredScale != nullptr);
+    REQUIRE(restoredScale->getIndex() == 1);
+}
+
 TEST_CASE("APVTS waveform parameter has a stable automatable contract and persists", "[parameters][waveform]") {
     ChordSynthAudioProcessor processor;
     auto& apvts = processor.getAPVTS();

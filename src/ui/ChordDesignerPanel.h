@@ -14,6 +14,7 @@ public:
         music::HarmonyConfiguration& config,
         const music::DiatonicChordVoicer& voicer,
         std::function<int()> getTonicCallback,
+        std::function<music::Scale()> getScaleCallback,
         std::function<int()> getSceneCallback,
         std::function<void(int scene, int degree)> onSpecSavedCallback);
     ~ChordDesignerPanel() override;
@@ -35,6 +36,7 @@ private:
     music::HarmonyConfiguration& config;
     const music::DiatonicChordVoicer& voicer;
     std::function<int()> getTonic;
+    std::function<music::Scale()> getScale;
     std::function<int()> getScene;
     std::function<void(int scene, int degree)> onSpecSaved;
 

@@ -48,6 +48,22 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         REQUIRE(output.pushedMessages[2].getNoteNumber() == 55);
     }
 
+    SECTION("Diatonic mode ignores a saved manual quality override") {
+        music::VoicingSpec overriddenSpec;
+        overriddenSpec.qualityRule = music::QualityRule::major;
+        config.setSpec(0, 1, overriddenSpec);
+
+        controller.setDiatonicMode(true);
+        REQUIRE(controller.pressDegree(1, 0.8f));
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({50, 53, 57}, 3));
+
+        controller.releaseActiveChord();
+        output.pushedMessages.clear();
+        controller.setDiatonicMode(false);
+        REQUIRE(controller.pressDegree(1, 0.8f));
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({50, 54, 57}, 3));
+    }
+
     SECTION("releaseActiveChord produces note-off events for active notes and clears state") {
         REQUIRE(controller.pressDegree(0, 0.8f));
         output.pushedMessages.clear();

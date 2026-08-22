@@ -9,7 +9,8 @@ public:
     [[nodiscard]] VoicedChord voiceChord(
         int tonicPitchClass,
         int degree,
-        const VoicingSpec& spec) const;
+        const VoicingSpec& spec,
+        Scale scale = Scale::major) const;
 };
 
 } // namespace chordsynth::music

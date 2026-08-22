@@ -328,6 +328,7 @@ void ChordSynthAudioProcessor::setStateInformation(const void* data, int sizeInB
             incomingState.appendChild(parameterState, nullptr);
         };
         addDefaultIfMissing(parameters::ids::waveform, 0.0f);
+        addDefaultIfMissing(parameters::ids::scale, 0.0f);
         addDefaultIfMissing(parameters::ids::cutoff, 8000.0f);
         addDefaultIfMissing(parameters::ids::resonance, 0.2f);
         addDefaultIfMissing(parameters::ids::detune, 7.0f);

@@ -8,6 +8,7 @@ namespace chordsynth::presets {
 
 struct PresetParameters {
     int key{0};
+    int scale{0}; // 0 = Major, 1 = Natural minor
     juce::String waveform{"sine"};
     float attackMs{5.0f};
     float decayMs{80.0f};

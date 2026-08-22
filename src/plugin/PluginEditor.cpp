@@ -26,10 +26,18 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
               performancePanel.updateChordKeys();
               chordDesignerPanel.refresh();
           },
+          /*onScaleChanged=*/[this](music::Scale newScale) {
+              performanceController.releaseActiveChord();
+              performanceController.setScale(newScale);
+              performancePanel.updateChordKeys();
+              chordDesignerPanel.refresh();
+          },
           /*onRuleModeChanged=*/[this](bool isFreeMode) {
               audioProcessor.getHarmonyState().setQualityRule(
                   isFreeMode ? music::QualityRule::major : music::QualityRule::diatonic);
+              performanceController.setDiatonicMode(!isFreeMode);
               chordDesignerPanel.setRuleMode(isFreeMode);
+              performancePanel.updateChordKeys();
           },
           /*onBeforeKeyChange=*/[this]() {
               performanceController.releaseActiveChord();
@@ -43,6 +51,7 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
           p.getHarmonyState().getConfiguration(),
           chordVoicer,
           /*getTonic=*/[this]() { return performanceController.getTonic(); },
+          /*getScale=*/[this]() { return performanceController.getScale(); },
           /*getScene=*/[this]() { return performanceController.getScene(); },
           /*onSpecSaved=*/[this](int scene, int degree) {
               performancePanel.updateChordKeys();
@@ -65,11 +74,17 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
         harmonyToolbar.setTonic(initialTonic);
         lastPolledKeyIndex = initialTonic;
     }
+    if (auto* scaleParam = p.getAPVTS().getRawParameterValue(parameters::ids::scale)) {
+        const auto initialScale = *scaleParam >= 0.5f ? music::Scale::naturalMinor : music::Scale::major;
+        performanceController.setScale(initialScale);
+        harmonyToolbar.setScale(initialScale);
+    }
 
     performanceController.setScene(p.getHarmonyState().getSelectedScene());
     performanceController.setLiveRevoice(p.getHarmonyState().getLiveRevoice());
 
     bool isFreeMode = (p.getHarmonyState().getQualityRule() != music::QualityRule::diatonic);
+    performanceController.setDiatonicMode(!isFreeMode);
     harmonyToolbar.setRuleMode(isFreeMode);
     chordDesignerPanel.setRuleMode(isFreeMode);
 
@@ -179,11 +194,16 @@ void ChordSynthAudioProcessorEditor::loadPresetAtIndex(int index)
 
     // Sync performance controller & UI components
     performanceController.setTonic(preset.parameters.key);
+    const auto presetScale = preset.parameters.scale == 1
+        ? music::Scale::naturalMinor : music::Scale::major;
+    performanceController.setScale(presetScale);
     performanceController.setScene(preset.harmony.getSelectedScene());
     performanceController.setLiveRevoice(preset.harmony.getLiveRevoice());
 
     bool isFreeMode = (preset.harmony.getQualityRule() != music::QualityRule::diatonic);
+    performanceController.setDiatonicMode(!isFreeMode);
     harmonyToolbar.setTonic(preset.parameters.key);
+    harmonyToolbar.setScale(presetScale);
     harmonyToolbar.setRuleMode(isFreeMode);
     chordDesignerPanel.setRuleMode(isFreeMode);
     chordDesignerPanel.setSelectedScene(preset.harmony.getSelectedScene());
@@ -201,6 +221,17 @@ void ChordSynthAudioProcessorEditor::timerCallback()
             lastPolledKeyIndex = currentKey;
             performanceController.setTonic(currentKey);
             harmonyToolbar.setTonic(currentKey);
+            performancePanel.updateChordKeys();
+            chordDesignerPanel.refresh();
+        }
+    }
+
+    if (auto* scaleParam = audioProcessor.getAPVTS().getRawParameterValue(parameters::ids::scale)) {
+        const auto scale = *scaleParam >= 0.5f ? music::Scale::naturalMinor : music::Scale::major;
+        if (scale != performanceController.getScale()) {
+            performanceController.releaseActiveChord();
+            performanceController.setScale(scale);
+            harmonyToolbar.setScale(scale);
             performancePanel.updateChordKeys();
             chordDesignerPanel.refresh();
         }

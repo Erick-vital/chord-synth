@@ -6,6 +6,7 @@ namespace chordsynth::parameters {
 
 inline constexpr auto stateRootType = "Parameters";
 inline constexpr int keyParameterVersion = 1;
+inline constexpr int scaleParameterVersion = 1;
 inline constexpr int waveformParameterVersion = 1;
 inline constexpr int cutoffParameterVersion = 1;
 inline constexpr int resonanceParameterVersion = 1;
@@ -29,6 +30,7 @@ inline constexpr int arpGateParameterVersion = 1;
 
 namespace ids {
     inline constexpr auto key = "key";
+    inline constexpr auto scale = "scale";
     inline constexpr auto waveform = "waveform";
     inline constexpr auto cutoff = "cutoff";
     inline constexpr auto resonance = "resonance";
@@ -57,6 +59,7 @@ namespace ids {
 
 namespace names {
     inline constexpr auto key = "Key";
+    inline constexpr auto scale = "Scale";
     inline constexpr auto waveform = "Waveform";
     inline constexpr auto cutoff = "Cutoff";
     inline constexpr auto resonance = "Resonance";

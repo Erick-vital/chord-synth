@@ -35,6 +35,7 @@ juce::String PresetSerializer::toJson(const Preset& preset) {
 
     auto* paramsObj = new juce::DynamicObject();
     paramsObj->setProperty("key", preset.parameters.key);
+    paramsObj->setProperty("scale", preset.parameters.scale);
     paramsObj->setProperty("waveform", preset.parameters.waveform);
     paramsObj->setProperty("attack_ms", preset.parameters.attackMs);
     paramsObj->setProperty("decay_ms", preset.parameters.decayMs);
@@ -131,6 +132,11 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
     if (paramsObj->hasProperty("key")) {
         int key = paramsObj->getProperty("key");
         preset.parameters.key = std::clamp(key, 0, 11);
+    }
+
+    if (paramsObj->hasProperty("scale")) {
+        int scale = paramsObj->getProperty("scale");
+        preset.parameters.scale = std::clamp(scale, 0, 1);
     }
 
     if (paramsObj->hasProperty("waveform")) {
@@ -346,6 +352,10 @@ Preset PresetSerializer::fromProcessorState(
     if (keyParam != nullptr)
         preset.parameters.key = keyParam->getIndex();
 
+    auto* scaleParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::scale));
+    if (scaleParam != nullptr)
+        preset.parameters.scale = scaleParam->getIndex();
+
     auto* waveParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::waveform));
     if (waveParam != nullptr)
         preset.parameters.waveform = waveformToString(waveParam->getIndex());
@@ -433,6 +443,10 @@ bool PresetSerializer::applyToAPVTS(const Preset& preset, parameters::AudioProce
     auto* keyParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::key));
     if (keyParam != nullptr)
         *keyParam = preset.parameters.key;
+
+    auto* scaleParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::scale));
+    if (scaleParam != nullptr)
+        *scaleParam = preset.parameters.scale;
 
     auto* waveParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::waveform));
     if (waveParam != nullptr)

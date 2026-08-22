@@ -9,9 +9,10 @@ namespace chordsynth::music {
 
 namespace {
 
-constexpr std::array<int, 7> diatonicScaleSemitones{0, 2, 4, 5, 7, 9, 11};
+constexpr std::array<int, 7> majorScaleSemitones{0, 2, 4, 5, 7, 9, 11};
+constexpr std::array<int, 7> naturalMinorScaleSemitones{0, 2, 3, 5, 7, 8, 10};
 
-constexpr std::array<ChordQuality, 7> diatonicQualities{
+constexpr std::array<ChordQuality, 7> majorDiatonicQualities{
     ChordQuality::major,
     ChordQuality::minor,
     ChordQuality::minor,
@@ -21,8 +22,18 @@ constexpr std::array<ChordQuality, 7> diatonicQualities{
     ChordQuality::diminished,
 };
 
-// 7th interval relative to root for each diatonic degree (major: 11, minor: 10)
-constexpr std::array<int, 7> diatonicSeventhIntervals{
+constexpr std::array<ChordQuality, 7> naturalMinorDiatonicQualities{
+    ChordQuality::minor,
+    ChordQuality::diminished,
+    ChordQuality::major,
+    ChordQuality::minor,
+    ChordQuality::minor,
+    ChordQuality::major,
+    ChordQuality::major,
+};
+
+// 7th interval relative to root for each diatonic degree.
+constexpr std::array<int, 7> majorDiatonicSeventhIntervals{
     11, // I: maj7 (C - B)
     10, // ii: m7 (D - C)
     10, // iii: m7 (E - D)
@@ -31,6 +42,8 @@ constexpr std::array<int, 7> diatonicSeventhIntervals{
     10, // vi: m7 (A - G)
     10  // vii: m7b5 (B - A)
 };
+
+constexpr std::array<int, 7> naturalMinorDiatonicSeventhIntervals{10, 10, 11, 10, 10, 11, 10};
 
 constexpr std::array<std::string_view, 12> pitchNames{
     "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
@@ -41,18 +54,26 @@ constexpr std::array<std::string_view, 12> pitchNames{
 VoicedChord DiatonicChordVoicer::voiceChord(
     int tonicPitchClass,
     int degree,
-    const VoicingSpec& spec) const {
+    const VoicingSpec& spec,
+    Scale scale) const {
     if (degree < 0 || degree > 6) {
         throw std::out_of_range("Degree must be between 0 and 6");
     }
 
     const int normalizedTonic = ((tonicPitchClass % 12) + 12) % 12;
     const int baseMidi = 12 * (spec.baseOctave + 1) + normalizedTonic;
-    const int rootOffset = diatonicScaleSemitones[static_cast<std::size_t>(degree)];
+    const auto degreeIndex = static_cast<std::size_t>(degree);
+    const auto& scaleSemitones = scale == Scale::naturalMinor
+        ? naturalMinorScaleSemitones : majorScaleSemitones;
+    const auto& diatonicQualities = scale == Scale::naturalMinor
+        ? naturalMinorDiatonicQualities : majorDiatonicQualities;
+    const auto& diatonicSeventhIntervals = scale == Scale::naturalMinor
+        ? naturalMinorDiatonicSeventhIntervals : majorDiatonicSeventhIntervals;
+    const int rootOffset = scaleSemitones[degreeIndex];
     const int rootMidi = baseMidi + rootOffset;
 
     // Determine chord quality
-    ChordQuality quality = diatonicQualities[static_cast<std::size_t>(degree)];
+    ChordQuality quality = diatonicQualities[degreeIndex];
     if (spec.qualityRule != QualityRule::diatonic) {
         switch (spec.qualityRule) {
             case QualityRule::major:

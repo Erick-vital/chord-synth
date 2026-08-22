@@ -77,6 +77,43 @@ TEST_CASE("DiatonicChordVoicer generates diatonic seventh chords in C major", "[
     REQUIRE(chordvii.notes[3] == 69);
 }
 
+TEST_CASE("DiatonicChordVoicer generates natural minor diatonic chords", "[music][voicer][minor]") {
+    DiatonicChordVoicer voicer;
+    VoicingSpec spec{
+        .extension = ChordExtension::seventh,
+        .inversion = 0,
+        .style = VoicingStyle::close,
+        .baseOctave = 3,
+        .qualityRule = QualityRule::diatonic
+    };
+
+    // C natural minor: C, D, Eb, F, G, Ab, Bb. The diatonic sevenths are
+    // Cm7, Dm7b5, Ebmaj7, Fm7, Gm7, Abmaj7, Bb7.
+    const auto tonic = 0;
+    const auto cMinor = voicer.voiceChord(tonic, 0, spec, Scale::naturalMinor);
+    REQUIRE(cMinor.label == "Cm7");
+    REQUIRE(cMinor.notes == NoteSet({48, 51, 55, 58}, 4));
+
+    const auto dHalfDiminished = voicer.voiceChord(tonic, 1, spec, Scale::naturalMinor);
+    REQUIRE(dHalfDiminished.label == "Dm7b5");
+    REQUIRE(dHalfDiminished.notes == NoteSet({50, 53, 56, 60}, 4));
+
+    const auto eFlatMajorSeven = voicer.voiceChord(tonic, 2, spec, Scale::naturalMinor);
+    REQUIRE(eFlatMajorSeven.label == "D#maj7");
+    REQUIRE(eFlatMajorSeven.notes == NoteSet({51, 55, 58, 62}, 4));
+
+    const auto bFlatSeven = voicer.voiceChord(tonic, 6, spec, Scale::naturalMinor);
+    REQUIRE(bFlatSeven.label == "A#7");
+    REQUIRE(bFlatSeven.notes == NoteSet({58, 62, 65, 68}, 4));
+
+    spec.extension = ChordExtension::triad;
+    const std::array<std::string, 7> expectedTriadLabels{"Cm", "Ddim", "D#", "Fm", "Gm", "G#", "A#"};
+    for (int degree = 0; degree < 7; ++degree) {
+        const auto triad = voicer.voiceChord(tonic, degree, spec, Scale::naturalMinor);
+        REQUIRE(triad.label == expectedTriadLabels[static_cast<std::size_t>(degree)]);
+    }
+}
+
 TEST_CASE("DiatonicChordVoicer applies inversions correctly", "[music][voicer]") {
     DiatonicChordVoicer voicer;
 

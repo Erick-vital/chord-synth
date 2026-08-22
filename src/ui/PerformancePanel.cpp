@@ -1,17 +1,37 @@
 #include "PerformancePanel.h"
 #include "ChordSynthLookAndFeel.h"
+#include "Utf8Text.h"
 
 namespace chordsynth::ui {
 
 namespace {
 constexpr std::array<char, 7> shortcutChars{'Q', 'W', 'E', 'R', 'T', 'Y', 'U'};
-constexpr std::array<const char*, 7> degreeRomanLabels{"I", "ii", "iii", "IV", "V", "vi", "vii\xc2\xb0"};
+
+const char* degreeRomanLabel(music::Scale scale, int degree)
+{
+    static constexpr std::array<const char*, 7> major{"I", "ii", "iii", "IV", "V", "vi", "vii\xc2\xb0"};
+    static constexpr std::array<const char*, 7> naturalMinor{"i", "ii\xc2\xb0", "III", "iv", "v", "VI", "VII"};
+    return (scale == music::Scale::naturalMinor ? naturalMinor : major)[static_cast<std::size_t>(degree)];
+}
 constexpr std::array<const char*, 4> sceneLabels{
     "1  A \xc2\xb7 Triadas",
     "2  B \xc2\xb7 S\xc3\xa9ptimas",
     "3  C \xc2\xb7 Abierto",
     "4  D \xc2\xb7 Inversiones"
 };
+
+music::VoicingSpec resolvedSpec(
+    const music::HarmonyConfiguration& config,
+    const interaction::ChordPerformanceController& controller,
+    int scene,
+    int degree)
+{
+    auto spec = config.getSpec(scene, degree);
+    if (controller.isDiatonicMode()) {
+        spec.qualityRule = music::QualityRule::diatonic;
+    }
+    return spec;
+}
 } // namespace
 
 PerformancePanel::PerformancePanel(
@@ -49,7 +69,7 @@ PerformancePanel::PerformancePanel(
 
     // Scene buttons
     for (int i = 0; i < 4; ++i) {
-        sceneButtons[static_cast<std::size_t>(i)].setButtonText(sceneLabels[static_cast<std::size_t>(i)]);
+        sceneButtons[static_cast<std::size_t>(i)].setButtonText(utf8(sceneLabels[static_cast<std::size_t>(i)]));
         sceneButtons[static_cast<std::size_t>(i)].setComponentID("scene-" + juce::String(i));
         sceneButtons[static_cast<std::size_t>(i)].setClickingTogglesState(false);
         sceneButtons[static_cast<std::size_t>(i)].onClick = [this, i]() {
@@ -63,7 +83,7 @@ PerformancePanel::PerformancePanel(
         auto& key = chordKeys[static_cast<std::size_t>(i)];
         key.setDegreeIndex(i);
         key.setComponentID("degree-" + juce::String(i));
-        key.setDegreeLabel(degreeRomanLabels[static_cast<std::size_t>(i)]);
+        key.setDegreeLabel(utf8(degreeRomanLabel(performanceController.getScale(), i)));
         key.setKeycapShortcut(juce::String::charToString(shortcutChars[static_cast<std::size_t>(i)]));
 
         key.onPress = [this](int degree) {
@@ -74,7 +94,9 @@ PerformancePanel::PerformancePanel(
                 const auto& chord = voicer.voiceChord(
                     performanceController.getTonic(),
                     active->degree,
-                    config.getSpec(performanceController.getScene(), active->degree));
+                    resolvedSpec(
+                        config, performanceController, performanceController.getScene(), active->degree),
+                    performanceController.getScale());
 
                 juce::String notesStr;
                 for (int n = 0; n < chord.notes.size(); ++n) {
@@ -85,7 +107,7 @@ PerformancePanel::PerformancePanel(
                     int oct = (midiVal / 12) - 1;
                     notesStr << pNames[pc] << oct;
                 }
-                setHeldChordDisplay(juce::String(degreeRomanLabels[static_cast<std::size_t>(degree)]) + " \xc2\xb7 " + chord.label, notesStr);
+                setHeldChordDisplay(utf8(degreeRomanLabel(performanceController.getScale(), degree)) + utf8(" \xc2\xb7 ") + chord.label, notesStr);
             }
         };
 
@@ -163,7 +185,9 @@ void PerformancePanel::selectScene(int sceneIndex)
         const auto& chord = voicer.voiceChord(
             performanceController.getTonic(),
             active->degree,
-            config.getSpec(performanceController.getScene(), active->degree));
+            resolvedSpec(
+                config, performanceController, performanceController.getScene(), active->degree),
+            performanceController.getScale());
 
         juce::String notesStr;
         for (int n = 0; n < chord.notes.size(); ++n) {
@@ -174,7 +198,7 @@ void PerformancePanel::selectScene(int sceneIndex)
             int oct = (midiVal / 12) - 1;
             notesStr << pNames[pc] << oct;
         }
-        setHeldChordDisplay(juce::String(degreeRomanLabels[static_cast<std::size_t>(active->degree)]) + " \xc2\xb7 " + chord.label, notesStr);
+        setHeldChordDisplay(utf8(degreeRomanLabel(performanceController.getScale(), active->degree)) + utf8(" \xc2\xb7 ") + chord.label, notesStr);
     }
 
     if (onSceneSelected)
@@ -192,15 +216,16 @@ void PerformancePanel::updateChordKeys()
     const int currentScene = performanceController.getScene();
 
     for (int deg = 0; deg < 7; ++deg) {
-        const auto spec = config.getSpec(currentScene, deg);
-        const auto chord = voicer.voiceChord(tonic, deg, spec);
+        const auto spec = resolvedSpec(config, performanceController, currentScene, deg);
+        const auto chord = voicer.voiceChord(tonic, deg, spec, performanceController.getScale());
 
         auto& key = chordKeys[static_cast<std::size_t>(deg)];
+        key.setDegreeLabel(utf8(degreeRomanLabel(performanceController.getScale(), deg)));
         key.setChordName(chord.label);
 
         juce::String notesStr;
         for (int n = 0; n < chord.notes.size(); ++n) {
-            if (n > 0) notesStr << " \xc2\xb7 ";
+            if (n > 0) notesStr << utf8(" \xc2\xb7 ");
             int midiVal = chord.notes[static_cast<std::size_t>(n)];
             static constexpr const char* pNames[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
             int pc = ((midiVal % 12) + 12) % 12;

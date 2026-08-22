@@ -65,6 +65,11 @@ enum class QualityRule : std::uint8_t {
     diminished
 };
 
+enum class Scale : std::uint8_t {
+    major,
+    naturalMinor
+};
+
 struct VoicingSpec {
     ChordExtension extension{ChordExtension::triad};
     int inversion{0};

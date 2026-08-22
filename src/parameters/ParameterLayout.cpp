@@ -18,6 +18,13 @@ AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
         0 // Default to C (index 0)
     ));
 
+    const juce::StringArray scaleChoices{"Mayor", "Menor natural"};
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID{ids::scale, scaleParameterVersion},
+        names::scale,
+        scaleChoices,
+        0));
+
     const juce::StringArray waveformChoices{"Sine", "Saw", "Square", "Triangle"};
     layout.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::waveform, waveformParameterVersion},

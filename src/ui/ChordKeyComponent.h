@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
 #include <string>
+#include "ui/Utf8Text.h"
 
 namespace chordsynth::ui {
 
@@ -45,7 +46,7 @@ private:
     int degreeIndex{0};
     juce::String degreeLabel{"I"};
     juce::String chordName{"C"};
-    juce::String chordNotes{"C · E · G"};
+    juce::String chordNotes{utf8("C \xc2\xb7 E \xc2\xb7 G")};
     juce::String keycapShortcut{"Q"};
 
     bool selected{false};

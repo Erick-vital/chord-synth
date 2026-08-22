@@ -1,10 +1,17 @@
 #include "ChordDesignerPanel.h"
 #include "ChordSynthLookAndFeel.h"
+#include "Utf8Text.h"
 
 namespace chordsynth::ui {
 
 namespace {
-constexpr std::array<const char*, 7> degreeRomanLabels{"I", "ii", "iii", "IV", "V", "vi", "vii\xc2\xb0"};
+const char* degreeRomanLabel(music::Scale scale, int degree)
+{
+    static constexpr std::array<const char*, 7> major{"I", "ii", "iii", "IV", "V", "vi", "vii\xc2\xb0"};
+    static constexpr std::array<const char*, 7> naturalMinor{"i", "ii\xc2\xb0", "III", "iv", "v", "VI", "VII"};
+    return (scale == music::Scale::naturalMinor ? naturalMinor : major)[static_cast<std::size_t>(degree)];
+}
+
 constexpr std::array<const char*, 12> pitchNames{"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
 } // namespace
 
@@ -12,16 +19,18 @@ ChordDesignerPanel::ChordDesignerPanel(
     music::HarmonyConfiguration& harmonyConfig,
     const music::DiatonicChordVoicer& chordVoicer,
     std::function<int()> getTonicCallback,
+    std::function<music::Scale()> getScaleCallback,
     std::function<int()> getSceneCallback,
     std::function<void(int scene, int degree)> onSpecSavedCallback)
     : config(harmonyConfig),
       voicer(chordVoicer),
       getTonic(std::move(getTonicCallback)),
+      getScale(std::move(getScaleCallback)),
       getScene(std::move(getSceneCallback)),
       onSpecSaved(std::move(onSpecSavedCallback))
 {
     // Panel Header
-    headerTitleLabel.setText("Dise\xc3\xb1""ar acorde", juce::dontSendNotification);
+    headerTitleLabel.setText(utf8("Dise\xc3\xb1""ar acorde"), juce::dontSendNotification);
     headerTitleLabel.setFont(juce::FontOptions(14.0f).withStyle("Bold"));
     headerTitleLabel.setColour(juce::Label::textColourId, colors::text);
     addAndMakeVisible(headerTitleLabel);
@@ -38,12 +47,12 @@ ChordDesignerPanel::ChordDesignerPanel(
     eyebrowLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(eyebrowLabel);
 
-    chordTitleLabel.setText("I \xc2\xb7 C", juce::dontSendNotification);
+    chordTitleLabel.setText(utf8("I \xc2\xb7 C"), juce::dontSendNotification);
     chordTitleLabel.setFont(juce::FontOptions(18.0f).withStyle("Bold"));
     chordTitleLabel.setColour(juce::Label::textColourId, colors::text);
     addAndMakeVisible(chordTitleLabel);
 
-    badgeLabel.setText("DIAT\xc3\x93NICO", juce::dontSendNotification);
+    badgeLabel.setText(utf8("DIAT\xc3\x93NICO"), juce::dontSendNotification);
     badgeLabel.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
     badgeLabel.setColour(juce::Label::textColourId, colors::cyan);
     badgeLabel.setColour(juce::Label::backgroundColourId, colors::cyan.withAlpha(0.12f));
@@ -56,7 +65,7 @@ ChordDesignerPanel::ChordDesignerPanel(
     qualityLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(qualityLabel);
 
-    qualityComboBox.addItem("Seg\xc3\xba""n escala", 1);
+    qualityComboBox.addItem(utf8("Seg\xc3\xba""n escala"), 1);
     qualityComboBox.addItem("Mayor", 2);
     qualityComboBox.addItem("Menor", 3);
     qualityComboBox.addItem("Disminuido", 4);
@@ -65,32 +74,32 @@ ChordDesignerPanel::ChordDesignerPanel(
     addAndMakeVisible(qualityComboBox);
 
     // Field 2: Extensión
-    extensionLabel.setText("EXTENSI\xc3\x93N", juce::dontSendNotification);
+    extensionLabel.setText(utf8("EXTENSI\xc3\x93N"), juce::dontSendNotification);
     extensionLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
     extensionLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(extensionLabel);
 
     extensionComboBox.addItem("Triada", 1);
-    extensionComboBox.addItem("S\xc3\xa9ptima", 2);
+    extensionComboBox.addItem(utf8("S\xc3\xa9ptima"), 2);
     extensionComboBox.setSelectedId(1, juce::dontSendNotification);
     extensionComboBox.onChange = [this]() { updatePreview(); };
     addAndMakeVisible(extensionComboBox);
 
     // Field 3: Inversión
-    inversionLabel.setText("INVERSI\xc3\x93N", juce::dontSendNotification);
+    inversionLabel.setText(utf8("INVERSI\xc3\x93N"), juce::dontSendNotification);
     inversionLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
     inversionLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(inversionLabel);
 
-    inversionComboBox.addItem("Ra\xc3\xad""z", 1);
-    inversionComboBox.addItem("1\xc2\xaa inversi\xc3\xb3n", 2);
-    inversionComboBox.addItem("2\xc2\xaa inversi\xc3\xb3n", 3);
+    inversionComboBox.addItem(utf8("Ra\xc3\xad""z"), 1);
+    inversionComboBox.addItem(utf8("1\xc2\xaa inversi\xc3\xb3n"), 2);
+    inversionComboBox.addItem(utf8("2\xc2\xaa inversi\xc3\xb3n"), 3);
     inversionComboBox.setSelectedId(1, juce::dontSendNotification);
     inversionComboBox.onChange = [this]() { updatePreview(); };
     addAndMakeVisible(inversionComboBox);
 
     // Field 4: Distribución
-    styleLabel.setText("DISTRIBUCI\xc3\x93N", juce::dontSendNotification);
+    styleLabel.setText(utf8("DISTRIBUCI\xc3\x93N"), juce::dontSendNotification);
     styleLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
     styleLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(styleLabel);
@@ -115,7 +124,7 @@ ChordDesignerPanel::ChordDesignerPanel(
     addAndMakeVisible(octaveComboBox);
 
     // Preview Label
-    previewLabel.setText("C3 \xc2\xb7 E3 \xc2\xb7 G3", juce::dontSendNotification);
+    previewLabel.setText(utf8("C3 \xc2\xb7 E3 \xc2\xb7 G3"), juce::dontSendNotification);
     previewLabel.setFont(juce::FontOptions(12.0f).withStyle("Bold"));
     previewLabel.setColour(juce::Label::textColourId, colors::cyan);
     previewLabel.setJustificationType(juce::Justification::centred);
@@ -130,7 +139,7 @@ ChordDesignerPanel::ChordDesignerPanel(
         config.setSpec(currentScene, currentDegree, newSpec);
 
         isSavedFlashActive = true;
-        saveButton.setButtonText("Guardado \xe2\x9c\x93");
+        saveButton.setButtonText(utf8("Guardado \xe2\x9c\x93"));
         startTimer(900);
 
         if (onSpecSaved) {
@@ -186,7 +195,7 @@ void ChordDesignerPanel::setRuleMode(bool isFreeMode)
     freeMode = isFreeMode;
 
     if (!freeMode) {
-        badgeLabel.setText("DIAT\xc3\x93NICO", juce::dontSendNotification);
+        badgeLabel.setText(utf8("DIAT\xc3\x93NICO"), juce::dontSendNotification);
         badgeLabel.setColour(juce::Label::textColourId, colors::cyan);
         badgeLabel.setColour(juce::Label::backgroundColourId, colors::cyan.withAlpha(0.12f));
         qualityComboBox.setEnabled(false);
@@ -273,17 +282,20 @@ music::VoicingSpec ChordDesignerPanel::buildSpecFromControls() const
 void ChordDesignerPanel::updatePreview()
 {
     int tonic = getTonic ? getTonic() : 0;
-    const auto previewSpec = buildSpecFromControls();
+    auto previewSpec = buildSpecFromControls();
+    if (!freeMode) {
+        previewSpec.qualityRule = music::QualityRule::diatonic;
+    }
 
-    const auto voiced = voicer.voiceChord(tonic, currentDegree, previewSpec);
+    const auto voiced = voicer.voiceChord(tonic, currentDegree, previewSpec, getScale());
 
     chordTitleLabel.setText(
-        juce::String(degreeRomanLabels[static_cast<std::size_t>(currentDegree)]) + " \xc2\xb7 " + voiced.label,
+        utf8(degreeRomanLabel(getScale(), currentDegree)) + utf8(" \xc2\xb7 ") + voiced.label,
         juce::dontSendNotification);
 
     juce::String notesStr;
     for (int n = 0; n < voiced.notes.size(); ++n) {
-        if (n > 0) notesStr << " \xc2\xb7 ";
+        if (n > 0) notesStr << utf8(" \xc2\xb7 ");
         int midiVal = voiced.notes[static_cast<std::size_t>(n)];
         int pc = ((midiVal % 12) + 12) % 12;
         int oct = (midiVal / 12) - 1;

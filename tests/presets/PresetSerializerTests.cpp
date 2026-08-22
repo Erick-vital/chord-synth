@@ -14,6 +14,7 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         original.schemaVersion = 1;
         original.name = "Warm C";
         original.parameters.key = 0;
+        original.parameters.scale = 1;
         original.parameters.waveform = "saw";
         original.parameters.attackMs = 5.0f;
         original.parameters.decayMs = 80.0f;
@@ -49,6 +50,7 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         REQUIRE(restored.schemaVersion == 1);
         REQUIRE(restored.name == "Warm C");
         REQUIRE(restored.parameters.key == 0);
+        REQUIRE(restored.parameters.scale == 1);
         REQUIRE(restored.parameters.waveform == "saw");
         REQUIRE(restored.parameters.attackMs == Catch::Approx(5.0f));
         REQUIRE(restored.parameters.decayMs == Catch::Approx(80.0f));
@@ -125,6 +127,7 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         REQUIRE(p.schemaVersion == 1);
         REQUIRE(p.name == "Legacy V1");
         REQUIRE(p.parameters.key == 4);
+        REQUIRE(p.parameters.scale == 0);
         REQUIRE(p.parameters.waveform == "saw");
         REQUIRE(p.parameters.cutoffHz == Catch::Approx(4000.0f));
         REQUIRE(p.harmony.getSelectedScene() == 0);
@@ -201,6 +204,8 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
     ChordSynthAudioProcessor processor;
     auto* keyParam = dynamic_cast<juce::AudioParameterChoice*>(
         processor.getAPVTS().getParameter(parameters::ids::key));
+    auto* scaleParam = dynamic_cast<juce::AudioParameterChoice*>(
+        processor.getAPVTS().getParameter(parameters::ids::scale));
     auto* waveParam = dynamic_cast<juce::AudioParameterChoice*>(
         processor.getAPVTS().getParameter(parameters::ids::waveform));
     auto* cutoffParam = dynamic_cast<juce::AudioParameterFloat*>(
@@ -247,6 +252,7 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
         processor.getAPVTS().getParameter(parameters::ids::arpGate));
 
     REQUIRE(keyParam != nullptr);
+    REQUIRE(scaleParam != nullptr);
     REQUIRE(waveParam != nullptr);
     REQUIRE(cutoffParam != nullptr);
     REQUIRE(resParam != nullptr);
@@ -269,6 +275,7 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
     REQUIRE(arpGate != nullptr);
 
     *keyParam = 2; // D
+    *scaleParam = 1; // Natural minor
     *waveParam = 2; // Square
     *cutoffParam = 3500.0f;
     *resParam = 0.8f;
@@ -293,6 +300,7 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
     auto preset = PresetSerializer::fromAPVTS(processor.getAPVTS(), "Exported");
     REQUIRE(preset.name == "Exported");
     REQUIRE(preset.parameters.key == 2);
+    REQUIRE(preset.parameters.scale == 1);
     REQUIRE(preset.parameters.waveform == "square");
     REQUIRE(preset.parameters.cutoffHz == Catch::Approx(3500.0f));
     REQUIRE(preset.parameters.resonance == Catch::Approx(0.8f));
@@ -320,6 +328,8 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
 
     auto* targetKey = dynamic_cast<juce::AudioParameterChoice*>(
         targetProcessor.getAPVTS().getParameter(parameters::ids::key));
+    auto* targetScale = dynamic_cast<juce::AudioParameterChoice*>(
+        targetProcessor.getAPVTS().getParameter(parameters::ids::scale));
     auto* targetWave = dynamic_cast<juce::AudioParameterChoice*>(
         targetProcessor.getAPVTS().getParameter(parameters::ids::waveform));
     auto* targetCutoff = dynamic_cast<juce::AudioParameterFloat*>(
@@ -362,6 +372,7 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
         targetProcessor.getAPVTS().getParameter(parameters::ids::arpGate));
 
     REQUIRE(targetKey != nullptr);
+    REQUIRE(targetScale != nullptr);
     REQUIRE(targetWave != nullptr);
     REQUIRE(targetCutoff != nullptr);
     REQUIRE(targetRes != nullptr);
@@ -384,6 +395,7 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
     REQUIRE(targetArpGate != nullptr);
 
     REQUIRE(targetKey->getIndex() == 2);
+    REQUIRE(targetScale->getIndex() == 1);
     REQUIRE(targetWave->getIndex() == 2);
     REQUIRE(static_cast<float>(*targetCutoff) == Catch::Approx(3500.0f));
     REQUIRE(static_cast<float>(*targetRes) == Catch::Approx(0.8f));

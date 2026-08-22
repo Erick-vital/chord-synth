@@ -12,10 +12,12 @@ constexpr std::array<const char*, 12> pitchNames{
 HarmonyToolbar::HarmonyToolbar(
     parameters::AudioProcessorValueTreeState& state,
     std::function<void(int newTonic)> onKeyChangedCallback,
+    std::function<void(music::Scale newScale)> onScaleChangedCallback,
     std::function<void(bool isFreeMode)> onRuleModeChangedCallback,
     std::function<void()> onBeforeKeyChangeCallback)
     : apvts(state),
       onKeyChanged(std::move(onKeyChangedCallback)),
+      onScaleChanged(std::move(onScaleChangedCallback)),
       onRuleModeChanged(std::move(onRuleModeChangedCallback)),
       onBeforeKeyChange(std::move(onBeforeKeyChangeCallback))
 {
@@ -55,8 +57,19 @@ HarmonyToolbar::HarmonyToolbar(
     addAndMakeVisible(scaleLabel);
 
     scaleComboBox.addItem("Mayor", 1);
+    scaleComboBox.addItem("Menor natural", 2);
+    scaleComboBox.setComponentID("scale-select");
     scaleComboBox.setSelectedId(1, juce::dontSendNotification);
-    scaleComboBox.setEnabled(false); // Solo mayor soportado actualmente
+    scaleComboBox.onChange = [this]() {
+        if (onScaleChanged) {
+            onScaleChanged(scaleComboBox.getSelectedId() == 2
+                ? music::Scale::naturalMinor : music::Scale::major);
+        }
+    };
+    scaleAttachment = std::make_unique<parameters::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        apvts,
+        parameters::ids::scale,
+        scaleComboBox);
     addAndMakeVisible(scaleComboBox);
 
     // Field 3: Reglas (Diatónico / Libre)
@@ -76,7 +89,7 @@ HarmonyToolbar::HarmonyToolbar(
     setRuleMode(false);
 
     // Hint label
-    hintLabel.setText("Q\xe2\x80\x93" "U toca acordes  \xc2\xb7  1\xe2\x80\x93" "4 cambia voicing", juce::dontSendNotification);
+    hintLabel.setText(utf8("Q\xe2\x80\x93" "U toca acordes  \xc2\xb7  1\xe2\x80\x93" "4 cambia voicing"), juce::dontSendNotification);
     hintLabel.setFont(juce::FontOptions(12.0f));
     hintLabel.setColour(juce::Label::textColourId, colors::textMuted);
     hintLabel.setJustificationType(juce::Justification::centredRight);
@@ -88,6 +101,12 @@ void HarmonyToolbar::setTonic(int tonicIndex)
     if (tonicIndex >= 0 && tonicIndex < 12) {
         keyComboBox.setSelectedId(tonicIndex + 1, juce::dontSendNotification);
     }
+}
+
+void HarmonyToolbar::setScale(music::Scale scale)
+{
+    scaleComboBox.setSelectedId(scale == music::Scale::naturalMinor ? 2 : 1,
+                                juce::dontSendNotification);
 }
 
 void HarmonyToolbar::setRuleMode(bool isFreeMode)

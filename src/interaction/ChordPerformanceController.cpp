@@ -40,8 +40,11 @@ void ChordPerformanceController::applyLiveRevoicing(int targetScene) noexcept {
     }
 
     const int degree = activeChord->degree;
-    const auto spec = config.getSpec(targetScene, degree);
-    const auto voiced = voicer.voiceChord(tonic, degree, spec);
+    auto spec = config.getSpec(targetScene, degree);
+    if (diatonicMode) {
+        spec.qualityRule = music::QualityRule::diatonic;
+    }
+    const auto voiced = voicer.voiceChord(tonic, degree, spec, scale);
     const auto& newNoteSet = voiced.notes;
     const auto& oldNoteSet = activeChord->notes;
 
@@ -110,8 +113,11 @@ bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcep
         return true;
     }
 
-    const auto spec = config.getSpec(currentScene, degree);
-    const auto voiced = voicer.voiceChord(tonic, degree, spec);
+    auto spec = config.getSpec(currentScene, degree);
+    if (diatonicMode) {
+        spec.qualityRule = music::QualityRule::diatonic;
+    }
+    const auto voiced = voicer.voiceChord(tonic, degree, spec, scale);
     const auto& newNotes = voiced.notes;
 
     if (newNotes.empty()) {

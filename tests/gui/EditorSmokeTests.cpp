@@ -22,6 +22,25 @@ juce::Component* findDescendantWithID(juce::Component& component, const juce::St
 
 } // namespace
 
+bool containsExpectedText(const juce::Component& component, const juce::String& expected)
+{
+    if (const auto* label = dynamic_cast<const juce::Label*>(&component); label != nullptr && label->getText() == expected)
+        return true;
+
+    if (const auto* button = dynamic_cast<const juce::Button*>(&component); button != nullptr && button->getButtonText() == expected)
+        return true;
+
+    if (const auto* comboBox = dynamic_cast<const juce::ComboBox*>(&component); comboBox != nullptr && comboBox->getText() == expected)
+        return true;
+
+    for (auto* child : component.getChildren()) {
+        if (containsExpectedText(*child, expected))
+            return true;
+    }
+
+    return false;
+}
+
 TEST_CASE("Production PluginEditor instantiates full performance interface", "[gui][smoke]") {
     const juce::ScopedJuceInitialiser_GUI guiInitialiser;
 
@@ -54,9 +73,36 @@ TEST_CASE("Production PluginEditor instantiates full performance interface", "[g
     auto* keyCombo = findDescendantWithID(*editor, "key-select");
     REQUIRE(keyCombo != nullptr);
 
+    auto* scaleCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "scale-select"));
+    REQUIRE(scaleCombo != nullptr);
+    REQUIRE(scaleCombo->isEnabled());
+    REQUIRE(scaleCombo->getItemText(0) == "Mayor");
+    REQUIRE(scaleCombo->getItemText(1) == "Menor natural");
+
     auto* waveCombo = findDescendantWithID(*editor, "waveform-select");
     REQUIRE(waveCombo != nullptr);
 
     auto* cutoffSlider = findDescendantWithID(*editor, "cutoff-slider");
     REQUIRE(cutoffSlider != nullptr);
+}
+
+TEST_CASE("Production PluginEditor renders Spanish interface text as UTF-8", "[gui][utf8]") {
+    const juce::ScopedJuceInitialiser_GUI guiInitialiser;
+
+    ChordSynthAudioProcessor processor;
+    std::unique_ptr<juce::AudioProcessorEditor> editor(processor.createEditor());
+
+    REQUIRE(editor != nullptr);
+
+    for (const auto& expected : {
+             juce::String::fromUTF8("Diat\xc3\xb3nico"),
+             juce::String::fromUTF8("2  B \xc2\xb7 S\xc3\xa9ptimas"),
+             juce::String::fromUTF8("Dise\xc3\xb1" "ar acorde"),
+             juce::String::fromUTF8("Seg\xc3\xba" "n escala"),
+             juce::String::fromUTF8("Ra\xc3\xad" "z"),
+             juce::String::fromUTF8("vii\xc2\xb0")
+         }) {
+        INFO("Expected UTF-8 UI text: " << expected.toStdString());
+        REQUIRE(containsExpectedText(*editor, expected));
+    }
 }
