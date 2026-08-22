@@ -16,6 +16,7 @@ public:
     [[nodiscard]] int getDegreeIndex() const noexcept { return degreeIndex; }
 
     void setDegreeLabel(const juce::String& text);
+    [[nodiscard]] const juce::String& getDegreeLabel() const noexcept { return degreeLabel; }
     void setChordName(const juce::String& text);
     void setChordNotes(const juce::String& text);
     void setKeycapShortcut(const juce::String& text);

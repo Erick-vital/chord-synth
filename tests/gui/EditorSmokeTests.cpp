@@ -2,6 +2,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "plugin/PluginProcessor.h"
 #include "plugin/PluginEditor.h"
+#include "ui/ChordKeyComponent.h"
 
 using namespace chordsynth;
 
@@ -99,10 +100,13 @@ TEST_CASE("Production PluginEditor renders Spanish interface text as UTF-8", "[g
              juce::String::fromUTF8("2  B \xc2\xb7 S\xc3\xa9ptimas"),
              juce::String::fromUTF8("Dise\xc3\xb1" "ar acorde"),
              juce::String::fromUTF8("Seg\xc3\xba" "n escala"),
-             juce::String::fromUTF8("Ra\xc3\xad" "z"),
-             juce::String::fromUTF8("vii\xc2\xb0")
+             juce::String::fromUTF8("Ra\xc3\xad" "z")
          }) {
         INFO("Expected UTF-8 UI text: " << expected.toStdString());
         REQUIRE(containsExpectedText(*editor, expected));
     }
+
+    auto* degreeSeven = dynamic_cast<ui::ChordKeyComponent*>(findDescendantWithID(*editor, "degree-6"));
+    REQUIRE(degreeSeven != nullptr);
+    REQUIRE(degreeSeven->getDegreeLabel() == juce::String::fromUTF8("vii\xc2\xb0"));
 }
