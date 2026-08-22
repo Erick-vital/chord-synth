@@ -174,6 +174,9 @@ void PerformancePanel::selectScene(int sceneIndex)
         }
         setHeldChordDisplay(juce::String(degreeRomanLabels[static_cast<std::size_t>(active->degree)]) + " \xc2\xb7 " + chord.label, notesStr);
     }
+
+    if (onSceneSelected)
+        onSceneSelected(sceneIndex);
 }
 
 void PerformancePanel::handleSceneButtonClicked(int sceneIndex)

@@ -178,6 +178,35 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         REQUIRE(output.pushedMessages[2].getNoteNumber() == 60);
     }
 
+    SECTION("revoiceActiveChordIfHeld updates held chord if liveRevoice is enabled") {
+        controller.setLiveRevoice(true);
+        REQUIRE(controller.pressDegree(0, 0.8f)); // C triad: 48, 52, 55
+        output.pushedMessages.clear();
+
+        // Mutate spec for degree 0 in Scene A to seventh chord
+        music::VoicingSpec seventhSpec;
+        seventhSpec.extension = music::ChordExtension::seventh;
+        config.setSpec(0, 0, seventhSpec);
+
+        // Calling revoiceActiveChordIfHeld(0) while holding degree 0
+        controller.revoiceActiveChordIfHeld(0);
+        REQUIRE(controller.getActiveChord()->notes.size() == 4);
+        REQUIRE(output.pushedMessages.size() == 1);
+        REQUIRE(output.pushedMessages[0].isNoteOn());
+        REQUIRE(output.pushedMessages[0].getNoteNumber() == 59);
+
+        // Calling revoiceActiveChordIfHeld on another degree (e.g. 1) does nothing
+        output.pushedMessages.clear();
+        controller.revoiceActiveChordIfHeld(1);
+        REQUIRE(output.pushedMessages.empty());
+
+        // With liveRevoice disabled, revoiceActiveChordIfHeld does nothing
+        controller.setLiveRevoice(false);
+        output.pushedMessages.clear();
+        controller.revoiceActiveChordIfHeld(0);
+        REQUIRE(output.pushedMessages.empty());
+    }
+
     SECTION("allNotesOff, destructor and enqueue failure maintain consistent state") {
         REQUIRE(controller.pressDegree(0, 0.8f));
         output.pushedMessages.clear();

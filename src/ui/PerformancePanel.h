@@ -31,6 +31,7 @@ public:
     void selectScene(int sceneIndex);
 
     std::function<void(int degreeIndex)> onDegreeSelected;
+    std::function<void(int sceneIndex)> onSceneSelected;
 
 private:
     void timerCallback() override;

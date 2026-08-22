@@ -221,7 +221,11 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         src/ui/ChordKeyComponent.cpp
         src/ui/ChordKeyComponent.h
         src/ui/PerformancePanel.cpp
-        src/ui/PerformancePanel.h)
+        src/ui/PerformancePanel.h
+        src/ui/HarmonyToolbar.cpp
+        src/ui/HarmonyToolbar.h
+        src/ui/ChordDesignerPanel.cpp
+        src/ui/ChordDesignerPanel.h)
 
 
     target_include_directories(ChordSynth PRIVATE

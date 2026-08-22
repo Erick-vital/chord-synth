@@ -92,6 +92,14 @@ void ChordPerformanceController::applyLiveRevoicing(int targetScene) noexcept {
     }
 }
 
+void ChordPerformanceController::revoiceActiveChordIfHeld(int degree) noexcept {
+    if (!liveRevoice || !activeChord.has_value() || activeChord->degree != degree) {
+        return;
+    }
+
+    applyLiveRevoicing(currentScene);
+}
+
 bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcept {
     if (!music::HarmonyConfiguration::isValidDegree(degree)) {
         return false;

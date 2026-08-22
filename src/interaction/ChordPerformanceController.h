@@ -59,6 +59,7 @@ public:
     bool pressDegree(int degree, float velocity = 0.8f) noexcept;
     void releaseActiveChord() noexcept;
     void allNotesOff() noexcept;
+    void revoiceActiveChordIfHeld(int degree) noexcept;
 
     [[nodiscard]] const std::optional<ActiveChord>& getActiveChord() const noexcept {
         return activeChord;
