@@ -12,6 +12,7 @@ add_executable(ChordSynthTests
     dsp/UiMidiQueueTests.cpp
     music/ArpeggiatorTests.cpp
     music/DiatonicChordVoicerTests.cpp
+    music/HarmonyConfigurationTests.cpp
     music/MajorScaleChordMapTests.cpp
     music/MusicalClockTests.cpp
     music/NoteMathTests.cpp
