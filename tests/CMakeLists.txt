@@ -79,10 +79,23 @@ add_test(
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/UiSyntaxVerificationContract.cmake)
 
+add_test(
+    NAME GuiSmokePluginDefinitionsContract
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GuiSmokePluginDefinitionsContract.cmake)
+
+add_test(
+    NAME GuiSmokePresetSerializerIsolationContract
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GuiSmokePresetSerializerIsolation.cmake)
+
 if(CHORDSYNTH_BUILD_PLUGIN)
     add_executable(ChordSynthGuiSmokeTests
         gui/EditorSmokeTests.cpp
         ../src/parameters/ParameterLayout.cpp
+        ../src/presets/PresetSerializer.cpp
         ../src/plugin/PluginProcessor.cpp
         ../src/plugin/PluginEditor.cpp
         ../src/ui/ChordSynthLookAndFeel.cpp
@@ -94,7 +107,6 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         ../src/ui/SoundPanel.cpp)
 
     target_link_libraries(ChordSynthGuiSmokeTests PRIVATE
-        chordsynth_presets
         chordsynth_dsp
         chordsynth_music
         chordsynth_interaction
@@ -110,6 +122,13 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         ${CMAKE_SOURCE_DIR}/src)
 
     target_compile_features(ChordSynthGuiSmokeTests PRIVATE cxx_std_20)
+
+    # This executable compiles PluginProcessor/PluginEditor directly instead of
+    # being created through juce_add_plugin, so provide the plugin macros those
+    # production sources receive from JUCE's generated target.
+    target_compile_definitions(ChordSynthGuiSmokeTests PRIVATE
+        JUCE_STANDALONE_APPLICATION=0
+        JucePlugin_Name="ChordSynth")
 
     catch_discover_tests(ChordSynthGuiSmokeTests)
 endif()
