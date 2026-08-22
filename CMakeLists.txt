@@ -79,6 +79,22 @@ target_link_libraries(chordsynth_music PRIVATE
 
 target_compile_features(chordsynth_music PUBLIC cxx_std_20)
 
+# Interaction Library (Message thread controllers)
+add_library(chordsynth_interaction STATIC
+    src/interaction/ChordPerformanceController.h
+    src/interaction/ChordPerformanceController.cpp)
+
+target_include_directories(chordsynth_interaction PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_link_libraries(chordsynth_interaction PUBLIC
+    chordsynth_music
+    chordsynth_dsp
+    PRIVATE
+    chordsynth_juce_headless_test_only)
+
+target_compile_features(chordsynth_interaction PUBLIC cxx_std_20)
+
 # DSP Library (independiente de UI)
 add_library(chordsynth_dsp STATIC
     src/dsp/ChordSound.h
@@ -150,6 +166,7 @@ target_link_libraries(chordsynth_plugin PUBLIC
     chordsynth_parameters
     chordsynth_dsp
     chordsynth_music
+    chordsynth_interaction
     PRIVATE
     chordsynth_juce_headless_test_only)
 
@@ -196,6 +213,7 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         PRIVATE
             chordsynth_dsp
             chordsynth_music
+            chordsynth_interaction
             juce::juce_audio_utils
             juce::juce_audio_processors
             juce::juce_gui_basics

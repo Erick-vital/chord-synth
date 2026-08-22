@@ -10,6 +10,7 @@ add_executable(ChordSynthTests
     dsp/ReverbTests.cpp
     dsp/TempoDelayTests.cpp
     dsp/UiMidiQueueTests.cpp
+    interaction/ChordPerformanceControllerTests.cpp
     music/ArpeggiatorTests.cpp
     music/DiatonicChordVoicerTests.cpp
     music/HarmonyConfigurationTests.cpp
@@ -27,6 +28,7 @@ target_link_libraries(ChordSynthTests PRIVATE
     chordsynth_parameters
     chordsynth_dsp
     chordsynth_music
+    chordsynth_interaction
     chordsynth_juce_headless_test_only
     Catch2::Catch2WithMain)
 
