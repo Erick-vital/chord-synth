@@ -115,6 +115,7 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         ../src/ui/ChordKeyComponent.cpp
         ../src/ui/HeaderBar.cpp
         ../src/ui/PerformancePanel.cpp
+        ../src/ui/ChordColorPanel.cpp
         ../src/ui/HarmonyToolbar.cpp
         ../src/ui/ChordDesignerPanel.cpp
         ../src/ui/SoundPanel.cpp)

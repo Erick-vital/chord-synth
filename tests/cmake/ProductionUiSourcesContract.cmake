@@ -5,6 +5,8 @@ foreach(required_ui_source
         "src/plugin/PluginEditor.h"
         "src/ui/PerformancePanel.cpp"
         "src/ui/PerformancePanel.h"
+        "src/ui/ChordColorPanel.cpp"
+        "src/ui/ChordColorPanel.h"
         "src/ui/ChordKeyComponent.cpp"
         "src/ui/ChordKeyComponent.h"
         "src/ui/HarmonyToolbar.cpp"

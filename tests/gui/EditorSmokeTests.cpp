@@ -144,6 +144,22 @@ TEST_CASE("Production PluginEditor instantiates full performance interface", "[g
     auto* registerCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "register-select"));
     REQUIRE(registerCombo != nullptr);
     REQUIRE(registerCombo->getNumItems() == 3);
+
+    // Chord Color Performance Panel controls from Task 16
+    auto* paletteSelectCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "palette-select"));
+    REQUIRE(paletteSelectCombo != nullptr);
+    REQUIRE(paletteSelectCombo->getNumItems() == 3);
+
+    for (int slot = 0; slot < 8; ++slot) {
+        juce::String colorId = "chord-color-" + juce::String(slot);
+        auto* colorBtn = findDescendantWithID(*editor, colorId);
+        INFO("Checking presence of " << colorId.toStdString());
+        REQUIRE(colorBtn != nullptr);
+    }
+
+    auto* commitTransformBtn = findDescendantWithID(*editor, "commit-transform-button");
+    REQUIRE(commitTransformBtn != nullptr);
+    REQUIRE_FALSE(commitTransformBtn->isEnabled());
 }
 
 TEST_CASE("Production PluginEditor renders Spanish interface text as UTF-8", "[gui][utf8]") {

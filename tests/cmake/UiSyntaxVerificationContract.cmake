@@ -5,6 +5,7 @@ set(UI_SOURCES
     "${SOURCE_DIR}/src/ui/HarmonyToolbar.cpp"
     "${SOURCE_DIR}/src/ui/HeaderBar.cpp"
     "${SOURCE_DIR}/src/ui/PerformancePanel.cpp"
+    "${SOURCE_DIR}/src/ui/ChordColorPanel.cpp"
     "${SOURCE_DIR}/src/ui/SoundPanel.cpp"
     "${SOURCE_DIR}/src/plugin/PluginEditor.cpp"
 )

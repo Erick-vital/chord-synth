@@ -7,8 +7,9 @@
 #include "ui/HeaderBar.h"
 #include "ui/HarmonyToolbar.h"
 #include "ui/PerformancePanel.h"
-#include "ui/ChordDesignerPanel.h"
+#include "ui/ChordColorPanel.h"
 #include "ui/SoundPanel.h"
+#include "ui/ChordDesignerPanel.h"
 #include "interaction/ChordPerformanceController.h"
 #include "music/DiatonicChordVoicer.h"
 #include "presets/Preset.h"
@@ -41,6 +42,7 @@ private:
     ui::HeaderBar headerBar;
     ui::HarmonyToolbar harmonyToolbar;
     ui::PerformancePanel performancePanel;
+    ui::ChordColorPanel chordColorPanel;
     ui::SoundPanel soundPanel;
     ui::ChordDesignerPanel chordDesignerPanel;
 

@@ -477,7 +477,7 @@ bool commitActiveTransform(music::HarmonyConfiguration&) noexcept;
 
 Add RED/GREEN tests for every lifecycle edge and max seven-note batches. Commit `feat: support temporary and committed chord transforms`.
 
-### Task 16: Add the Chord Color performance panel and keyboard mappings
+### Task 16: Add the Chord Color performance panel and keyboard mappings (Completed)
 
 **Objective:** Make palettes playable and state changes visible in-page.
 

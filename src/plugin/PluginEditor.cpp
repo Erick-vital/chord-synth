@@ -46,6 +46,10 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
           performanceController,
           p.getHarmonyState().getConfiguration(),
           chordVoicer),
+      chordColorPanel(
+          performanceController,
+          p.getHarmonyState().getConfiguration(),
+          chordVoicer),
       soundPanel(p.getAPVTS()),
       chordDesignerPanel(
           p.getHarmonyState().getConfiguration(),
@@ -88,7 +92,7 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
     harmonyToolbar.setRuleMode(isFreeMode);
     chordDesignerPanel.setRuleMode(isFreeMode);
 
-    // Wire callbacks between performance panel and designer
+    // Wire callbacks between performance panel, color panel and designer
     performancePanel.onDegreeSelected = [this](int degreeIndex) {
         chordDesignerPanel.setSelectedDegree(degreeIndex);
     };
@@ -98,9 +102,15 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
         chordDesignerPanel.setSelectedScene(sceneIndex);
     };
 
+    chordColorPanel.onTransformCommitted = [this]() {
+        performancePanel.updateChordKeys();
+        chordDesignerPanel.refresh();
+    };
+
     addAndMakeVisible(headerBar);
     addAndMakeVisible(harmonyToolbar);
     addAndMakeVisible(performancePanel);
+    addAndMakeVisible(chordColorPanel);
     addAndMakeVisible(soundPanel);
     addAndMakeVisible(chordDesignerPanel);
 
@@ -252,20 +262,25 @@ void ChordSynthAudioProcessorEditor::resized()
     // 1. Top Header bar (56 px high, full width)
     headerBar.setBounds(bounds.removeFromTop(56));
 
-    auto contentArea = bounds.reduced(18, 14);
+    auto contentArea = bounds.reduced(18, 10);
 
-    // 2. Harmony toolbar (64 px high)
-    harmonyToolbar.setBounds(contentArea.removeFromTop(64));
+    // 2. Harmony toolbar (60 px high)
+    harmonyToolbar.setBounds(contentArea.removeFromTop(60));
 
-    contentArea.removeFromTop(12);
+    contentArea.removeFromTop(8);
 
-    // 3. Middle performance panel (~260-280 px high, never clipped below 220 px)
-    int perfHeight = std::clamp(static_cast<int>(contentArea.getHeight() * 0.46f), 220, 280);
+    // 3. Middle performance panel (~180-220 px high)
+    int perfHeight = std::clamp(static_cast<int>(contentArea.getHeight() * 0.36f), 170, 220);
     performancePanel.setBounds(contentArea.removeFromTop(perfHeight));
 
-    contentArea.removeFromTop(12);
+    contentArea.removeFromTop(8);
 
-    // 4. Bottom area: ChordDesigner on the right (width 360-380 px), left is SoundPanel
+    // 4. Chord color panel (70 px high)
+    chordColorPanel.setBounds(contentArea.removeFromTop(70));
+
+    contentArea.removeFromTop(8);
+
+    // 5. Bottom area: ChordDesigner on the right (width 360-380 px), left is SoundPanel
     auto lowerArea = contentArea;
     int designerWidth = std::clamp(380, 320, std::max(320, lowerArea.getWidth() / 3));
     chordDesignerPanel.setBounds(lowerArea.removeFromRight(designerWidth));

@@ -236,6 +236,8 @@ if(CHORDSYNTH_BUILD_PLUGIN)
         src/ui/HeaderBar.h
         src/ui/PerformancePanel.cpp
         src/ui/PerformancePanel.h
+        src/ui/ChordColorPanel.cpp
+        src/ui/ChordColorPanel.h
         src/ui/HarmonyToolbar.cpp
         src/ui/HarmonyToolbar.h
         src/ui/ChordDesignerPanel.cpp
