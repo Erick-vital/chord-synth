@@ -3,9 +3,11 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <array>
 #include <functional>
+#include <memory>
 #include "interaction/ChordPerformanceController.h"
 #include "music/HarmonyConfiguration.h"
 #include "music/DiatonicChordVoicer.h"
+#include "parameters/ParameterLayout.h"
 
 namespace chordsynth::ui {
 
@@ -15,7 +17,8 @@ public:
     ChordColorPanel(
         interaction::ChordPerformanceController& controller,
         music::HarmonyConfiguration& harmonyConfig,
-        const music::DiatonicChordVoicer& chordVoicer);
+        const music::DiatonicChordVoicer& chordVoicer,
+        parameters::AudioProcessorValueTreeState* apvts = nullptr);
     ~ChordColorPanel() override;
 
     void paint(juce::Graphics& g) override;
@@ -49,11 +52,15 @@ private:
 
     // UI Controls
     juce::Label headerLabel;
+    juce::ToggleButton midiPerfToggle;
     juce::ComboBox paletteComboBox;
     std::array<juce::TextButton, 8> colorButtons;
     juce::TextButton commitButton;
     juce::Label feedbackLabel;
     juce::Label transformInfoLabel;
+
+    std::unique_ptr<parameters::AudioProcessorValueTreeState::ButtonAttachment> midiPerfAttachment;
+    std::unique_ptr<parameters::AudioProcessorValueTreeState::ComboBoxAttachment> paletteAttachment;
 
     std::array<bool, 8> physicalKeysDown{false, false, false, false, false, false, false, false};
     int feedbackTimerTicks{0};

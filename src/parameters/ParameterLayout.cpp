@@ -151,6 +151,18 @@ AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
         juce::NormalisableRange<float>{0.1f, 1.0f},
         0.8f));
 
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID{ids::performanceMidiEnabled, performanceMidiEnabledParameterVersion},
+        names::performanceMidiEnabled,
+        false));
+
+    const juce::StringArray transformPaletteChoices{"Basic", "Lo-Fi", "Spice"};
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID{ids::transformPalette, transformPaletteParameterVersion},
+        names::transformPalette,
+        transformPaletteChoices,
+        1)); // Default Lo-Fi (index 1)
+
     return layout;
 }
 

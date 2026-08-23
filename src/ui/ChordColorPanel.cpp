@@ -1,6 +1,7 @@
 #include "ChordColorPanel.h"
 #include "ChordSynthLookAndFeel.h"
-#include "Utf8Text.h"
+#include "ui/Utf8Text.h"
+#include "parameters/ParameterIds.h"
 #include <algorithm>
 
 namespace chordsynth::ui {
@@ -43,7 +44,8 @@ const char* spiceSlotNames[8] = {
 ChordColorPanel::ChordColorPanel(
     interaction::ChordPerformanceController& controller,
     music::HarmonyConfiguration& harmonyConfig,
-    const music::DiatonicChordVoicer& chordVoicer)
+    const music::DiatonicChordVoicer& chordVoicer,
+    parameters::AudioProcessorValueTreeState* apvts)
     : performanceController(controller),
       config(harmonyConfig),
       voicer(chordVoicer)
@@ -55,6 +57,12 @@ ChordColorPanel::ChordColorPanel(
     headerLabel.setFont(juce::FontOptions(10.0f).withStyle("Bold"));
     headerLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(headerLabel);
+
+    // MIDI Performance Toggle
+    midiPerfToggle.setButtonText("MIDI Perf");
+    midiPerfToggle.setComponentID("performance-midi-toggle");
+    midiPerfToggle.setTooltip("Habilita mapeo de notas MIDI 36-42 a grados I-VII y CC 20-27 a colores");
+    addAndMakeVisible(midiPerfToggle);
 
     // Palette combo
     paletteComboBox.setComponentID("palette-select");
@@ -69,6 +77,13 @@ ChordColorPanel::ChordColorPanel(
         else if (id == 3) setSelectedPalette(interaction::TransformPalette::spice);
     };
     addAndMakeVisible(paletteComboBox);
+
+    if (apvts != nullptr) {
+        midiPerfAttachment = std::make_unique<parameters::AudioProcessorValueTreeState::ButtonAttachment>(
+            *apvts, parameters::ids::performanceMidiEnabled, midiPerfToggle);
+        paletteAttachment = std::make_unique<parameters::AudioProcessorValueTreeState::ComboBoxAttachment>(
+            *apvts, parameters::ids::transformPalette, paletteComboBox);
+    }
 
     // 8 Color buttons
     for (int i = 0; i < 8; ++i) {
@@ -312,10 +327,12 @@ void ChordColorPanel::resized()
 {
     auto bounds = getLocalBounds().reduced(10, 8);
 
-    // Top row: Header (left), Palette combo (center-left), Info label (center-right), Commit button & Feedback (right)
+    // Top row: Header (left), MIDI perf toggle (left-center), Palette combo (center-left), Info label (center-right), Commit button & Feedback (right)
     auto topRow = bounds.removeFromTop(28);
-    headerLabel.setBounds(topRow.removeFromLeft(140));
-    paletteComboBox.setBounds(topRow.removeFromLeft(110));
+    headerLabel.setBounds(topRow.removeFromLeft(130));
+    midiPerfToggle.setBounds(topRow.removeFromLeft(85));
+    topRow.removeFromLeft(6);
+    paletteComboBox.setBounds(topRow.removeFromLeft(105));
     topRow.removeFromLeft(8);
 
     commitButton.setBounds(topRow.removeFromRight(110));

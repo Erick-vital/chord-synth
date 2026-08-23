@@ -855,6 +855,118 @@ TEST_CASE("Legacy state without arpeggiator parameters restores new defaults",
     REQUIRE(restoredKey->getIndex() == 11);
 }
 
+TEST_CASE("MIDI Performance parameters have stable continuous/discrete automatable contracts and persist",
+          "[parameters][midi_performance]") {
+    ChordSynthAudioProcessor processor;
+    auto& apvts = processor.getAPVTS();
+
+    SECTION("Performance MIDI Enabled contract and defaults") {
+        auto* midiEnabled = dynamic_cast<juce::AudioParameterBool*>(
+            apvts.getParameter(parameters::ids::performanceMidiEnabled));
+        REQUIRE(midiEnabled != nullptr);
+
+        const juce::AudioProcessorParameter& hostParameter = *midiEnabled;
+        REQUIRE(midiEnabled->getParameterID() == parameters::ids::performanceMidiEnabled);
+        REQUIRE(midiEnabled->getVersionHint() == parameters::performanceMidiEnabledParameterVersion);
+        REQUIRE(midiEnabled->name == parameters::names::performanceMidiEnabled);
+        REQUIRE(hostParameter.isBoolean());
+        REQUIRE(hostParameter.isDiscrete());
+        REQUIRE(hostParameter.getDefaultValue() == Catch::Approx(0.0f));
+        REQUIRE(hostParameter.getValue() == Catch::Approx(0.0f));
+        REQUIRE(*midiEnabled == false);
+    }
+
+    SECTION("Transform Palette choice contract, choices and default Lo-Fi") {
+        auto* palette = dynamic_cast<juce::AudioParameterChoice*>(
+            apvts.getParameter(parameters::ids::transformPalette));
+        REQUIRE(palette != nullptr);
+
+        const juce::StringArray expectedChoices{"Basic", "Lo-Fi", "Spice"};
+        const juce::AudioProcessorParameter& hostParameter = *palette;
+        REQUIRE(palette->choices == expectedChoices);
+        REQUIRE(palette->getParameterID() == parameters::ids::transformPalette);
+        REQUIRE(palette->getVersionHint() == parameters::transformPaletteParameterVersion);
+        REQUIRE(palette->name == parameters::names::transformPalette);
+        REQUIRE(hostParameter.getNumSteps() == 3);
+        REQUIRE(hostParameter.isDiscrete());
+        REQUIRE_FALSE(hostParameter.isBoolean());
+        REQUIRE(palette->getIndex() == 1); // Default Lo-Fi
+    }
+
+    SECTION("Round-trip persistence preserves non-default values") {
+        auto* midiEnabled = dynamic_cast<juce::AudioParameterBool*>(
+            apvts.getParameter(parameters::ids::performanceMidiEnabled));
+        auto* palette = dynamic_cast<juce::AudioParameterChoice*>(
+            apvts.getParameter(parameters::ids::transformPalette));
+        REQUIRE(midiEnabled != nullptr);
+        REQUIRE(palette != nullptr);
+
+        *midiEnabled = true;
+        *palette = 2; // Spice
+
+        juce::MemoryBlock stateBlock;
+        processor.getStateInformation(stateBlock);
+        REQUIRE(stateBlock.getSize() > 0);
+
+        ChordSynthAudioProcessor restoredProcessor;
+        restoredProcessor.setStateInformation(
+            stateBlock.getData(), static_cast<int>(stateBlock.getSize()));
+
+        auto* restoredMidiEnabled = dynamic_cast<juce::AudioParameterBool*>(
+            restoredProcessor.getAPVTS().getParameter(parameters::ids::performanceMidiEnabled));
+        auto* restoredPalette = dynamic_cast<juce::AudioParameterChoice*>(
+            restoredProcessor.getAPVTS().getParameter(parameters::ids::transformPalette));
+        REQUIRE(restoredMidiEnabled != nullptr);
+        REQUIRE(restoredPalette != nullptr);
+
+        REQUIRE(*restoredMidiEnabled == true);
+        REQUIRE(restoredPalette->getIndex() == 2);
+    }
+}
+
+TEST_CASE("Legacy state without MIDI performance parameters restores new defaults",
+          "[parameters][midi_performance][legacy]") {
+    chordsynth::ChordSynthAudioProcessor legacySource;
+    auto* key = dynamic_cast<juce::AudioParameterChoice*>(
+        legacySource.getAPVTS().getParameter(parameters::ids::key));
+    if (key != nullptr) *key = 5;
+
+    auto legacyState = legacySource.getAPVTS().copyState();
+    for (int i = legacyState.getNumChildren() - 1; i >= 0; --i) {
+        auto child = legacyState.getChild(i);
+        const auto id = child.getProperty("id").toString();
+        if (id == parameters::ids::performanceMidiEnabled || id == parameters::ids::transformPalette)
+            legacyState.removeChild(i, nullptr);
+    }
+
+    std::unique_ptr<juce::XmlElement> xml(legacyState.createXml());
+    juce::MemoryBlock block;
+    juce::AudioProcessor::copyXmlToBinary(*xml, block);
+
+    chordsynth::ChordSynthAudioProcessor restored;
+    auto* midiEnabled = dynamic_cast<juce::AudioParameterBool*>(
+        restored.getAPVTS().getParameter(parameters::ids::performanceMidiEnabled));
+    auto* palette = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::transformPalette));
+
+    REQUIRE(midiEnabled != nullptr);
+    REQUIRE(palette != nullptr);
+
+    // Set conflicting non-defaults before loading
+    *midiEnabled = true;
+    *palette = 0; // Basic
+
+    restored.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
+
+    REQUIRE(*midiEnabled == false);
+    REQUIRE(palette->getIndex() == 1); // Restores default Lo-Fi
+
+    auto* restoredKey = dynamic_cast<juce::AudioParameterChoice*>(
+        restored.getAPVTS().getParameter(parameters::ids::key));
+    REQUIRE(restoredKey != nullptr);
+    REQUIRE(restoredKey->getIndex() == 5);
+}
+
 TEST_CASE("Processor ignores semantically invalid parameter children in an otherwise valid state",
           "[parameters][robustness][persistence]") {
     ChordSynthAudioProcessor source;

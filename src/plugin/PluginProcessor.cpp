@@ -66,6 +66,7 @@ namespace chordsynth {
 ChordSynthAudioProcessor::ChordSynthAudioProcessor()
     : AudioProcessor(BusesProperties()
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+      midiPerformanceMapper(harmonyState.getConfiguration(), chordVoicer),
       apvts(*this, nullptr, parameters::stateRootType, parameters::createParameterLayout())
 {
     synth.addSound(new dsp::ChordSound());
@@ -91,6 +92,10 @@ ChordSynthAudioProcessor::ChordSynthAudioProcessor()
     arpModeParameter = apvts.getRawParameterValue(parameters::ids::arpMode);
     arpRateParameter = apvts.getRawParameterValue(parameters::ids::arpRate);
     arpGateParameter = apvts.getRawParameterValue(parameters::ids::arpGate);
+    keyParameter = apvts.getRawParameterValue(parameters::ids::key);
+    scaleParameter = apvts.getRawParameterValue(parameters::ids::scale);
+    performanceMidiEnabledParameter = apvts.getRawParameterValue(parameters::ids::performanceMidiEnabled);
+    transformPaletteParameter = apvts.getRawParameterValue(parameters::ids::transformPalette);
     jassert(waveformParameter != nullptr);
     jassert(cutoffParameter != nullptr);
     jassert(resonanceParameter != nullptr);
@@ -111,6 +116,10 @@ ChordSynthAudioProcessor::ChordSynthAudioProcessor()
     jassert(arpModeParameter != nullptr);
     jassert(arpRateParameter != nullptr);
     jassert(arpGateParameter != nullptr);
+    jassert(keyParameter != nullptr);
+    jassert(scaleParameter != nullptr);
+    jassert(performanceMidiEnabledParameter != nullptr);
+    jassert(transformPaletteParameter != nullptr);
 }
 
 ChordSynthAudioProcessor::~ChordSynthAudioProcessor()
@@ -224,6 +233,7 @@ void ChordSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBl
 
 void ChordSynthAudioProcessor::releaseResources()
 {
+    midiPerformanceMapper.reset();
 }
 
 bool ChordSynthAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
@@ -245,6 +255,40 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         buffer.clear(i, 0, buffer.getNumSamples());
 
     uiMidiQueue.drainTo(midiMessages, 0);
+
+    // Update and process MIDI Performance Mapper
+    const auto rawMidiPerfEnabled = performanceMidiEnabledParameter != nullptr
+        ? performanceMidiEnabledParameter->load(std::memory_order_relaxed) : 0.0f;
+    const bool isMidiPerfActive = rawMidiPerfEnabled > 0.5f;
+    midiPerformanceMapper.setEnabled(isMidiPerfActive);
+
+    if (isMidiPerfActive) {
+        const auto rawKey = keyParameter != nullptr
+            ? keyParameter->load(std::memory_order_relaxed) : 0.0f;
+        const auto rawScale = scaleParameter != nullptr
+            ? scaleParameter->load(std::memory_order_relaxed) : 0.0f;
+        const auto rawPalette = transformPaletteParameter != nullptr
+            ? transformPaletteParameter->load(std::memory_order_relaxed) : 1.0f;
+
+        const int tonic = std::clamp(static_cast<int>(rawKey), 0, 11);
+        const auto scale = rawScale >= 0.5f ? music::Scale::naturalMinor : music::Scale::major;
+        const bool isDiatonic = (harmonyState.getQualityRule() == music::QualityRule::diatonic);
+        const int scene = harmonyState.getSelectedScene();
+        const int palIdx = std::clamp(static_cast<int>(rawPalette), 0, 2);
+        auto pal = interaction::TransformPalette::loFi;
+        if (palIdx == 0) pal = interaction::TransformPalette::basic;
+        else if (palIdx == 2) pal = interaction::TransformPalette::spice;
+
+        midiPerformanceMapper.setContext({
+            .tonic = tonic,
+            .scale = scale,
+            .diatonicMode = isDiatonic,
+            .sceneIndex = scene,
+            .palette = pal
+        });
+
+        midiPerformanceMapper.processBlock(midiMessages, buffer.getNumSamples());
+    }
 
     double hostBpm = music::MusicalClock::defaultBpm;
     if (auto* ph = getPlayHead()) {
@@ -272,14 +316,23 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         arpeggiator.setRate(music::arpRateFromRawChoice(rawArpRate));
         arpeggiator.setGate(rawArpGate);
 
+        // Separate channel 2 (bass / non-arpeggiated) from channel 1 and other MIDI
         for (const auto meta : midiMessages) {
-            auto msg = meta.getMessage();
-            if (msg.isNoteOn()) {
-                arpeggiator.noteOn(msg.getNoteNumber(), msg.getFloatVelocity());
-            } else if (msg.isNoteOff()) {
-                arpeggiator.noteOff(msg.getNoteNumber());
-            } else if (msg.isAllNotesOff() || msg.isAllSoundOff()) {
-                arpeggiator.allNotesOff();
+            const auto msg = meta.getMessage();
+            if (msg.getChannel() == 2) {
+                // Pass bass directly to synthMidi without arpeggiating
+                synthMidi.addEvent(msg, meta.samplePosition);
+            } else {
+                if (msg.isNoteOn()) {
+                    arpeggiator.noteOn(msg.getNoteNumber(), msg.getFloatVelocity());
+                } else if (msg.isNoteOff()) {
+                    arpeggiator.noteOff(msg.getNoteNumber());
+                } else if (msg.isAllNotesOff() || msg.isAllSoundOff()) {
+                    arpeggiator.allNotesOff();
+                } else {
+                    // Non-note MIDI messages (e.g. CC, pitch bend) pass through directly
+                    synthMidi.addEvent(msg, meta.samplePosition);
+                }
             }
         }
 

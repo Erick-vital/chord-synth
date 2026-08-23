@@ -145,7 +145,11 @@ TEST_CASE("Production PluginEditor instantiates full performance interface", "[g
     REQUIRE(registerCombo != nullptr);
     REQUIRE(registerCombo->getNumItems() == 3);
 
-    // Chord Color Performance Panel controls from Task 16
+    // Chord Color Performance Panel controls from Task 16 & 18
+    auto* midiPerfToggle = dynamic_cast<juce::ToggleButton*>(findDescendantWithID(*editor, "performance-midi-toggle"));
+    REQUIRE(midiPerfToggle != nullptr);
+    REQUIRE_FALSE(midiPerfToggle->getToggleState());
+
     auto* paletteSelectCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "palette-select"));
     REQUIRE(paletteSelectCombo != nullptr);
     REQUIRE(paletteSelectCombo->getNumItems() == 3);

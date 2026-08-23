@@ -13,7 +13,9 @@
 #include "dsp/Reverb.h"
 #include "dsp/TempoDelay.h"
 #include "dsp/UiMidiQueue.h"
+#include "interaction/MidiPerformanceMapper.h"
 #include "music/Arpeggiator.h"
+#include "music/DiatonicChordVoicer.h"
 #include "parameters/ParameterLayout.h"
 #include "state/HarmonyState.h"
 #include <atomic>
@@ -89,6 +91,8 @@ private:
     dsp::TempoDelay delay;
     dsp::Reverb reverb;
     music::Arpeggiator arpeggiator;
+    music::DiatonicChordVoicer chordVoicer;
+    interaction::MidiPerformanceMapper midiPerformanceMapper;
     dsp::UiMidiQueue uiMidiQueue;
     state::HarmonyState harmonyState;
     parameters::AudioProcessorValueTreeState apvts;
@@ -112,6 +116,10 @@ private:
     std::atomic<float>* arpModeParameter{nullptr};
     std::atomic<float>* arpRateParameter{nullptr};
     std::atomic<float>* arpGateParameter{nullptr};
+    std::atomic<float>* keyParameter{nullptr};
+    std::atomic<float>* scaleParameter{nullptr};
+    std::atomic<float>* performanceMidiEnabledParameter{nullptr};
+    std::atomic<float>* transformPaletteParameter{nullptr};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordSynthAudioProcessor)
 };

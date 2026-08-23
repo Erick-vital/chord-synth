@@ -49,7 +49,8 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
       chordColorPanel(
           performanceController,
           p.getHarmonyState().getConfiguration(),
-          chordVoicer),
+          chordVoicer,
+          &p.getAPVTS()),
       soundPanel(p.getAPVTS()),
       chordDesignerPanel(
           p.getHarmonyState().getConfiguration(),

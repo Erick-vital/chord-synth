@@ -27,6 +27,8 @@ inline constexpr int arpEnabledParameterVersion = 1;
 inline constexpr int arpModeParameterVersion = 1;
 inline constexpr int arpRateParameterVersion = 1;
 inline constexpr int arpGateParameterVersion = 1;
+inline constexpr int performanceMidiEnabledParameterVersion = 1;
+inline constexpr int transformPaletteParameterVersion = 1;
 
 namespace ids {
     inline constexpr auto key = "key";
@@ -51,6 +53,8 @@ namespace ids {
     inline constexpr auto arpMode = "arp_mode";
     inline constexpr auto arpRate = "arp_rate";
     inline constexpr auto arpGate = "arp_gate";
+    inline constexpr auto performanceMidiEnabled = "performance_midi_enabled";
+    inline constexpr auto transformPalette = "transform_palette";
     inline constexpr auto attack = "attack";
     inline constexpr auto decay = "decay";
     inline constexpr auto sustain = "sustain";
@@ -80,6 +84,8 @@ namespace names {
     inline constexpr auto arpMode = "Arp Mode";
     inline constexpr auto arpRate = "Arp Rate";
     inline constexpr auto arpGate = "Arp Gate";
+    inline constexpr auto performanceMidiEnabled = "Performance MIDI";
+    inline constexpr auto transformPalette = "Transform Palette";
     inline constexpr auto attack = "Attack";
     inline constexpr auto decay = "Decay";
     inline constexpr auto sustain = "Sustain";

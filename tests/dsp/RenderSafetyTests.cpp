@@ -188,12 +188,16 @@ TEST_CASE("RenderSafety: Extreme parameter automation and edge values", "[dsp][s
     auto* rawReverbMix = processor.getAPVTS().getRawParameterValue(parameters::ids::reverbMix);
     auto* rawReverbRoom = processor.getAPVTS().getRawParameterValue(parameters::ids::reverbRoomSize);
     auto* rawReverbDamp = processor.getAPVTS().getRawParameterValue(parameters::ids::reverbDamping);
+    auto* rawMidiEnabled = processor.getAPVTS().getRawParameterValue(parameters::ids::performanceMidiEnabled);
+    auto* rawPalette = processor.getAPVTS().getRawParameterValue(parameters::ids::transformPalette);
 
     juce::AudioBuffer<float> buffer(2, 128);
     juce::MidiBuffer midi;
     midi.addEvent(juce::MidiMessage::noteOn(1, 60, 1.0f), 0);
     midi.addEvent(juce::MidiMessage::noteOn(1, 64, 1.0f), 0);
     midi.addEvent(juce::MidiMessage::noteOn(1, 67, 1.0f), 0);
+    midi.addEvent(juce::MidiMessage::noteOn(1, 36, 1.0f), 0); // MIDI perf note
+    midi.addEvent(juce::MidiMessage::controllerEvent(1, 20, 127), 0); // MIDI perf CC
 
     const std::vector<float> extremeCutoffs{-100.0f, 0.0f, 5.0f, 20.0f, 1000.0f, 24000.0f, 100000.0f,
                                            std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()};
@@ -216,6 +220,8 @@ TEST_CASE("RenderSafety: Extreme parameter automation and edge values", "[dsp][s
         if (rawReverbMix) rawReverbMix->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
         if (rawReverbRoom) rawReverbRoom->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
         if (rawReverbDamp) rawReverbDamp->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
+        if (rawMidiEnabled) rawMidiEnabled->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
+        if (rawPalette) rawPalette->store(extremeWaveforms[i % extremeWaveforms.size()], std::memory_order_relaxed);
 
         buffer.clear();
         processor.processBlock(buffer, midi);

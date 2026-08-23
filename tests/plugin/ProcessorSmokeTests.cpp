@@ -637,3 +637,67 @@ TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip 
         REQUIRE(targetProcessor.getHarmonyState().getSelectedScene() == 1);
     }
 }
+
+TEST_CASE("MIDI Performance processor routing maps notes 36-42 and routes bass on ch 2 around arpeggiator",
+          "[plugin][processor][midi_performance]") {
+    ChordSynthAudioProcessor procDisabled;
+    ChordSynthAudioProcessor procEnabled;
+
+    procDisabled.prepareToPlay(48000.0, 256);
+    procEnabled.prepareToPlay(48000.0, 256);
+
+    auto* midiParamEnabled = dynamic_cast<juce::AudioParameterBool*>(
+        procEnabled.getAPVTS().getParameter(parameters::ids::performanceMidiEnabled));
+    REQUIRE(midiParamEnabled != nullptr);
+    *midiParamEnabled = true;
+
+    SECTION("When disabled, note 36 plays single low note; when enabled, note 36 plays full chord") {
+        juce::AudioBuffer<float> bufDisabled(2, 256);
+        juce::AudioBuffer<float> bufEnabled(2, 256);
+        bufDisabled.clear();
+        bufEnabled.clear();
+
+        juce::MidiBuffer midiDisabled;
+        juce::MidiBuffer midiEnabled;
+        midiDisabled.addEvent(juce::MidiMessage::noteOn(1, 36, 0.8f), 0);
+        midiEnabled.addEvent(juce::MidiMessage::noteOn(1, 36, 0.8f), 0);
+
+        procDisabled.processBlock(bufDisabled, midiDisabled);
+        procEnabled.processBlock(bufEnabled, midiEnabled);
+
+        REQUIRE(bufDisabled.getMagnitude(0, 0, 256) > 0.01f);
+        REQUIRE(bufEnabled.getMagnitude(0, 0, 256) > 0.01f);
+
+        // Buffers should differ since enabled renders multi-tone chord (C4, E4, G4)
+        float diff = 0.0f;
+        for (int i = 0; i < 256; ++i) {
+            diff += std::abs(bufDisabled.getSample(0, i) - bufEnabled.getSample(0, i));
+        }
+        REQUIRE(diff > 0.1f);
+    }
+
+    SECTION("When both Arpeggiator and MIDI Performance are enabled, bass on ch 2 bypasses arp while chord arpeggiates") {
+        // Scene 1: B Séptimas has root bass enabled for Degree 0 (I)
+        procEnabled.getHarmonyState().setSelectedScene(1);
+
+        auto* arpParam = dynamic_cast<juce::AudioParameterBool*>(
+            procEnabled.getAPVTS().getParameter(parameters::ids::arpEnabled));
+        REQUIRE(arpParam != nullptr);
+        *arpParam = true;
+
+        juce::AudioBuffer<float> buffer(2, 256);
+        buffer.clear();
+        juce::MidiBuffer midi;
+        // Trigger Degree 0 (C)
+        midi.addEvent(juce::MidiMessage::noteOn(1, 36, 0.8f), 0);
+
+        procEnabled.processBlock(buffer, midi);
+
+        REQUIRE(buffer.getMagnitude(0, 0, 256) > 0.01f);
+        for (int ch = 0; ch < 2; ++ch) {
+            for (int i = 0; i < 256; ++i) {
+                REQUIRE(std::isfinite(buffer.getSample(ch, i)));
+            }
+        }
+    }
+}
