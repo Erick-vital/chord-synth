@@ -4,16 +4,33 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 
 namespace chordsynth::music {
+
+inline constexpr std::size_t maxChordTones = 6;
+using NoteStorage = std::array<int, maxChordTones>;
 
 class NoteSet {
 public:
     constexpr NoteSet() = default;
 
-    constexpr NoteSet(const std::array<int, 4>& rawNotes, int noteCount) noexcept
-        : notes(rawNotes), count(std::clamp(noteCount, 0, 4)) {}
+    constexpr NoteSet(const NoteStorage& rawNotes, int noteCount) noexcept
+        : notes(rawNotes), count(std::clamp(noteCount, 0, static_cast<int>(maxChordTones))) {}
+
+    constexpr NoteSet(std::initializer_list<int> initNotes, int noteCount) noexcept {
+        count = std::clamp(noteCount, 0, static_cast<int>(maxChordTones));
+        std::size_t idx = 0;
+        for (int note : initNotes) {
+            if (idx >= maxChordTones) {
+                break;
+            }
+            notes[idx++] = note;
+        }
+    }
+
+    static constexpr int capacity() noexcept { return static_cast<int>(maxChordTones); }
 
     [[nodiscard]] constexpr int size() const noexcept { return count; }
     [[nodiscard]] constexpr bool empty() const noexcept { return count == 0; }
@@ -25,7 +42,7 @@ public:
     [[nodiscard]] constexpr const int* begin() const noexcept { return notes.data(); }
     [[nodiscard]] constexpr const int* end() const noexcept { return notes.data() + count; }
 
-    [[nodiscard]] constexpr const std::array<int, 4>& data() const noexcept { return notes; }
+    [[nodiscard]] constexpr const NoteStorage& data() const noexcept { return notes; }
 
     constexpr bool operator==(const NoteSet& other) const noexcept {
         if (count != other.count) {
@@ -44,7 +61,7 @@ public:
     }
 
 private:
-    std::array<int, 4> notes{};
+    NoteStorage notes{};
     int count{0};
 };
 

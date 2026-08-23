@@ -53,8 +53,10 @@ void ChordPerformanceController::applyLiveRevoicing(int targetScene) noexcept {
     }
 
     // Determine removed notes and added notes
-    // Capacity for notes is at most 4, so max 4 off + 4 on = 8 messages
-    std::array<juce::MidiMessage, 8> batchMessages{};
+    // Capacity for notes is at most 6, so max 6 off + 6 on = 12 messages
+    constexpr std::size_t maxSoundingNotes = music::maxChordTones + 1; // optional bass
+    constexpr std::size_t maxReplacementEvents = maxSoundingNotes * 2;
+    std::array<juce::MidiMessage, maxReplacementEvents> batchMessages{};
     size_t batchCount = 0;
 
     // 1. Offs for removed notes
@@ -125,8 +127,10 @@ bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcep
     }
 
     // Prepare batch: if a chord was active, release it first, then start new notes
-    // Max 4 note-offs + max 4 note-ons = 8 messages
-    std::array<juce::MidiMessage, 8> batchMessages{};
+    // Max 6 note-offs + max 6 note-ons = 12 messages
+    constexpr std::size_t maxSoundingNotes = music::maxChordTones + 1; // optional bass
+    constexpr std::size_t maxReplacementEvents = maxSoundingNotes * 2;
+    std::array<juce::MidiMessage, maxReplacementEvents> batchMessages{};
     size_t batchCount = 0;
 
     if (activeChord.has_value()) {
@@ -167,7 +171,8 @@ void ChordPerformanceController::releaseActiveChord() noexcept {
 
     const auto& notes = activeChord->notes;
     if (!notes.empty()) {
-        std::array<juce::MidiMessage, 4> batchMessages{};
+        constexpr std::size_t maxSoundingNotes = music::maxChordTones + 1;
+        std::array<juce::MidiMessage, maxSoundingNotes> batchMessages{};
         for (int i = 0; i < notes.size(); ++i) {
             batchMessages[static_cast<size_t>(i)] = juce::MidiMessage::noteOff(
                 activeChord->midiChannel,

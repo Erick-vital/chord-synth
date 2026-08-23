@@ -126,7 +126,7 @@ VoicedChord DiatonicChordVoicer::voiceChord(
     const int noteCount = isSeventh ? 4 : 3;
 
     // Build raw root position notes
-    std::array<int, 4> rawNotes{};
+    NoteStorage rawNotes{};
     rawNotes[0] = rootMidi;
     rawNotes[1] = thirdMidi;
     rawNotes[2] = fifthMidi;
