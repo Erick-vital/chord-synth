@@ -1,8 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <string_view>
 
 namespace chordsynth::music {
+
+enum class QualityRule : std::uint8_t;
+enum class Scale : std::uint8_t;
 
 enum class ChordShape : std::uint8_t {
     triad,
@@ -117,5 +122,16 @@ struct ChordRecipe {
     }
     return clean;
 }
+
+[[nodiscard]] ChordRecipe resolveChordRecipe(
+    Scale scale,
+    int degree,
+    ChordShape shape,
+    QualityRule qualityRule) noexcept;
+
+[[nodiscard]] std::string resolveChordLabel(
+    int rootPitchClass,
+    const ChordRecipe& recipe,
+    ChordShape shape) noexcept;
 
 } // namespace chordsynth::music

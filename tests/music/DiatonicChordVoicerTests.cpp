@@ -218,15 +218,47 @@ TEST_CASE("DiatonicChordVoicer applies custom QualityRule (free mode override)",
         .baseOctave = 3,
         .qualityRule = QualityRule::major
     };
-    auto dMaj7 = voicer.voiceChord(0, 1, specCustomMajor);
-    REQUIRE(dMaj7.label == "Dmaj7");
-    REQUIRE(dMaj7.notes.size() == 4);
-    REQUIRE(dMaj7.notes[0] == 50);
-    REQUIRE(dMaj7.notes[1] == 54);
-    REQUIRE(dMaj7.notes[2] == 57);
-    REQUIRE(dMaj7.notes[3] == 61);
+    auto chordDmaj = voicer.voiceChord(0, 1, specCustomMajor);
+    REQUIRE(chordDmaj.label == "Dmaj7");
+    REQUIRE(chordDmaj.notes.size() == 4);
+    REQUIRE(chordDmaj.notes[0] == 50);
+    REQUIRE(chordDmaj.notes[1] == 54);
+    REQUIRE(chordDmaj.notes[2] == 57);
+    REQUIRE(chordDmaj.notes[3] == 61);
 
-    // Diatonic mode still produces Dm7 for degree 1
+    // Degree 0 (C) with QualityRule::dominant and seventh -> C3 (48), E3 (52), G3 (55), A#3/Bb3 (58) -> C7
+    VoicingSpec specCustomDom{
+        .extension = ChordExtension::seventh,
+        .inversion = 0,
+        .style = VoicingStyle::close,
+        .baseOctave = 3,
+        .qualityRule = QualityRule::dominant
+    };
+    auto chordCdom = voicer.voiceChord(0, 0, specCustomDom);
+    REQUIRE(chordCdom.label == "C7");
+    REQUIRE(chordCdom.notes.size() == 4);
+    REQUIRE(chordCdom.notes[0] == 48);
+    REQUIRE(chordCdom.notes[1] == 52);
+    REQUIRE(chordCdom.notes[2] == 55);
+    REQUIRE(chordCdom.notes[3] == 58);
+
+    // Degree 0 (C) with QualityRule::diminished and seventh -> C3 (48), D#3 (51), F#3 (54), A3 (57) -> Cdim7
+    VoicingSpec specCustomDim{
+        .extension = ChordExtension::seventh,
+        .inversion = 0,
+        .style = VoicingStyle::close,
+        .baseOctave = 3,
+        .qualityRule = QualityRule::diminished
+    };
+    auto chordCdim = voicer.voiceChord(0, 0, specCustomDim);
+    REQUIRE(chordCdim.label == "Cdim7");
+    REQUIRE(chordCdim.notes.size() == 4);
+    REQUIRE(chordCdim.notes[0] == 48);
+    REQUIRE(chordCdim.notes[1] == 51);
+    REQUIRE(chordCdim.notes[2] == 54);
+    REQUIRE(chordCdim.notes[3] == 57);
+
+    // QualityRule::diatonic on degree 1 (ii) should still be Dm7
     VoicingSpec specDiatonic{
         .extension = ChordExtension::seventh,
         .inversion = 0,
@@ -234,9 +266,145 @@ TEST_CASE("DiatonicChordVoicer applies custom QualityRule (free mode override)",
         .baseOctave = 3,
         .qualityRule = QualityRule::diatonic
     };
-    auto dDiatonic = voicer.voiceChord(0, 1, specDiatonic);
-    REQUIRE(dDiatonic.label == "Dm7");
-    REQUIRE(dDiatonic.notes[1] == 53); // F3
+    auto chordDm = voicer.voiceChord(0, 1, specDiatonic);
+    REQUIRE(chordDm.label == "Dm7");
+}
+
+TEST_CASE("DiatonicChordVoicer generates 9th, 11th, 13th, add9, 6/9 and suspended tones", "[music][voicer][extensions]") {
+    DiatonicChordVoicer voicer;
+
+    SECTION("C major extended acceptance cases in root position") {
+        // I ninth -> Cmaj9: C3 (48), E3 (52), G3 (55), B3 (59), D4 (62)
+        VoicingSpec specCmaj9{
+            .shape = ChordShape::ninth,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordCmaj9 = voicer.voiceChord(0, 0, specCmaj9);
+        REQUIRE(chordCmaj9.label == "Cmaj9");
+        REQUIRE(chordCmaj9.notes.size() == 5);
+        REQUIRE(chordCmaj9.notes == NoteSet({48, 52, 55, 59, 62}, 5));
+
+        // ii ninth -> Dm9: D3 (50), F3 (53), A3 (57), C4 (60), E4 (64)
+        VoicingSpec specDm9{
+            .shape = ChordShape::ninth,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordDm9 = voicer.voiceChord(0, 1, specDm9);
+        REQUIRE(chordDm9.label == "Dm9");
+        REQUIRE(chordDm9.notes.size() == 5);
+        REQUIRE(chordDm9.notes == NoteSet({50, 53, 57, 60, 64}, 5));
+
+        // V ninth -> G9: G3 (55), B3 (59), D4 (62), F4 (65), A4 (69)
+        VoicingSpec specG9{
+            .shape = ChordShape::ninth,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordG9 = voicer.voiceChord(0, 4, specG9);
+        REQUIRE(chordG9.label == "G9");
+        REQUIRE(chordG9.notes.size() == 5);
+        REQUIRE(chordG9.notes == NoteSet({55, 59, 62, 65, 69}, 5));
+
+        // V thirteenth -> G13: G3 (55), B3 (59), D4 (62), F4 (65), A4 (69), E5 (76)
+        VoicingSpec specG13{
+            .shape = ChordShape::thirteenth,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordG13 = voicer.voiceChord(0, 4, specG13);
+        REQUIRE(chordG13.label == "G13");
+        REQUIRE(chordG13.notes.size() == 6);
+        REQUIRE(chordG13.notes == NoteSet({55, 59, 62, 65, 69, 76}, 6));
+
+        // vi eleventh -> Am11: A3 (57), C4 (60), E4 (64), G4 (67), B4 (71), D5 (74)
+        VoicingSpec specAm11{
+            .shape = ChordShape::eleventh,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordAm11 = voicer.voiceChord(0, 5, specAm11);
+        REQUIRE(chordAm11.label == "Am11");
+        REQUIRE(chordAm11.notes.size() == 6);
+        REQUIRE(chordAm11.notes == NoteSet({57, 60, 64, 67, 71, 74}, 6));
+
+        // I add9 -> Cadd9: C3 (48), E3 (52), G3 (55), D4 (62)
+        VoicingSpec specCadd9{
+            .shape = ChordShape::add9,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordCadd9 = voicer.voiceChord(0, 0, specCadd9);
+        REQUIRE(chordCadd9.label == "Cadd9");
+        REQUIRE(chordCadd9.notes.size() == 4);
+        REQUIRE(chordCadd9.notes == NoteSet({48, 52, 55, 62}, 4));
+
+        // I 6/9 -> C6/9: C3 (48), E3 (52), G3 (55), A3 (57), D4 (62)
+        VoicingSpec specC69{
+            .shape = ChordShape::sixNine,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordC69 = voicer.voiceChord(0, 0, specC69);
+        REQUIRE(chordC69.label == "C6/9");
+        REQUIRE(chordC69.notes.size() == 5);
+        REQUIRE(chordC69.notes == NoteSet({48, 52, 55, 57, 62}, 5));
+
+        // I sus2 -> Csus2: C3 (48), D3 (50), G3 (55)
+        VoicingSpec specCsus2{
+            .shape = ChordShape::sus2,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordCsus2 = voicer.voiceChord(0, 0, specCsus2);
+        REQUIRE(chordCsus2.label == "Csus2");
+        REQUIRE(chordCsus2.notes.size() == 3);
+        REQUIRE(chordCsus2.notes == NoteSet({48, 50, 55}, 3));
+
+        // I sus4 -> Csus4: C3 (48), F3 (53), G3 (55)
+        VoicingSpec specCsus4{
+            .shape = ChordShape::sus4,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordCsus4 = voicer.voiceChord(0, 0, specCsus4);
+        REQUIRE(chordCsus4.label == "Csus4");
+        REQUIRE(chordCsus4.notes.size() == 3);
+        REQUIRE(chordCsus4.notes == NoteSet({48, 53, 55}, 3));
+    }
+
+    SECTION("Natural minor extended chords") {
+        // C natural minor:
+        // i ninth -> Cm9: C3 (48), D#3 (51), G3 (55), A#3 (58), D4 (62)
+        VoicingSpec specCm9{
+            .shape = ChordShape::ninth,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordCm9 = voicer.voiceChord(0, 0, specCm9, Scale::naturalMinor);
+        REQUIRE(chordCm9.label == "Cm9");
+        REQUIRE(chordCm9.notes.size() == 5);
+        REQUIRE(chordCm9.notes == NoteSet({48, 51, 55, 58, 62}, 5));
+
+        // ii seventh -> Dm7b5: D3 (50), F3 (53), G#3 (56), C4 (60)
+        VoicingSpec specDm7b5{
+            .shape = ChordShape::seventh,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordDm7b5 = voicer.voiceChord(0, 1, specDm7b5, Scale::naturalMinor);
+        REQUIRE(chordDm7b5.label == "Dm7b5");
+        REQUIRE(chordDm7b5.notes.size() == 4);
+        REQUIRE(chordDm7b5.notes == NoteSet({50, 53, 56, 60}, 4));
+        // Upper MIDI bound check
+        VoicingSpec specHighOctave{
+            .shape = ChordShape::thirteenth,
+            .baseOctave = 9,
+            .qualityRule = QualityRule::diatonic
+        };
+        REQUIRE_THROWS_AS(voicer.voiceChord(0, 0, specHighOctave), std::out_of_range);
+    }
 }
 
 TEST_CASE("DiatonicChordVoicer validates octave and MIDI bounds (0..127)", "[music][voicer]") {
