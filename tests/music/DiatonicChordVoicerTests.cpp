@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <music/ChordVoicingEngine.h>
 #include <music/DiatonicChordVoicer.h>
 
 using namespace chordsynth::music;
@@ -270,6 +271,89 @@ TEST_CASE("DiatonicChordVoicer applies custom QualityRule (free mode override)",
     REQUIRE(chordDm.label == "Dm7");
 }
 
+TEST_CASE("ChordVoicingEngine transposeBassToRange constraints", "[music][voicer][register]") {
+    // Dedicated bass range: MIDI 24..47; transpose by octaves into range.
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(12) == 24);
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(0) == 24);
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(24) == 24);
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(36) == 36);
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(47) == 47);
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(48) == 36);
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(60) == 36);
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(72) == 36);
+    REQUIRE(ChordVoicingEngine::transposeBassToRange(65) == 41); // F4 (65) -> F2 (41)
+}
+
+TEST_CASE("DiatonicChordVoicer enforces safe register constraints across shapes, tonics, octaves 2-4", "[music][voicer][register]") {
+    DiatonicChordVoicer voicer;
+
+    const std::array<ChordShape, 9> allShapes = {
+        ChordShape::triad,
+        ChordShape::seventh,
+        ChordShape::ninth,
+        ChordShape::eleventh,
+        ChordShape::thirteenth,
+        ChordShape::add9,
+        ChordShape::sixNine,
+        ChordShape::sus2,
+        ChordShape::sus4
+    };
+
+    const std::array<VoicingStyle, 3> allStyles = {
+        VoicingStyle::compact,
+        VoicingStyle::open,
+        VoicingStyle::rootless
+    };
+
+    for (int tonic = 0; tonic < 12; ++tonic) {
+        for (int octave = 2; octave <= 4; ++octave) {
+            for (auto shape : allShapes) {
+                for (auto style : allStyles) {
+                    for (int degree = 0; degree < 7; ++degree) {
+                        VoicingSpec spec{
+                            .shape = shape,
+                            .style = style,
+                            .baseOctave = octave,
+                            .qualityRule = QualityRule::diatonic
+                        };
+
+                        const auto voiced = voicer.voiceChord(tonic, degree, spec, Scale::major);
+                        const auto& notes = voiced.notes;
+
+                        REQUIRE(notes.size() > 0);
+                        REQUIRE(notes.size() <= 6);
+
+                        // Ascending uniqueness
+                        for (int i = 0; i < notes.size(); ++i) {
+                            if (i > 0) {
+                                REQUIRE(notes[i] > notes[i - 1]);
+                            }
+                            // Harmonic ceiling check: MIDI <= 96 (C7)
+                            REQUIRE(notes[i] <= ChordVoicingEngine::harmonicCeiling);
+                        }
+
+                        // Harmonic chord floor: MIDI >= 48 (C3) for recipes with 5 or 6 tones
+                        if (notes.size() >= 5) {
+                            for (int i = 0; i < notes.size(); ++i) {
+                                REQUIRE(notes[i] >= ChordVoicingEngine::denseChordFloor);
+                            }
+                        }
+
+                        // Rootless / open floor: MIDI >= 52 (E3) for non-bass tones
+                        // (in rootless for 7th-or-higher, tones are non-bass harmonic tones and must stay >= 52)
+                        if (style == VoicingStyle::rootless && shape != ChordShape::triad && shape != ChordShape::sus2 && shape != ChordShape::sus4) {
+                            for (int i = 0; i < notes.size(); ++i) {
+                                REQUIRE(notes[i] >= ChordVoicingEngine::rootlessOpenFloor);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 TEST_CASE("DiatonicChordVoicer generates 9th, 11th, 13th, add9, 6/9 and suspended tones", "[music][voicer][extensions]") {
     DiatonicChordVoicer voicer;
 
@@ -397,13 +481,17 @@ TEST_CASE("DiatonicChordVoicer generates 9th, 11th, 13th, add9, 6/9 and suspende
         REQUIRE(chordDm7b5.label == "Dm7b5");
         REQUIRE(chordDm7b5.notes.size() == 4);
         REQUIRE(chordDm7b5.notes == NoteSet({50, 53, 56, 60}, 4));
-        // Upper MIDI bound check
+        // Upper MIDI bound check / high octave sanity
         VoicingSpec specHighOctave{
             .shape = ChordShape::thirteenth,
             .baseOctave = 9,
             .qualityRule = QualityRule::diatonic
         };
-        REQUIRE_THROWS_AS(voicer.voiceChord(0, 0, specHighOctave), std::out_of_range);
+        auto highVoiced = voicer.voiceChord(0, 0, specHighOctave);
+        for (int i = 0; i < highVoiced.notes.size(); ++i) {
+            REQUIRE(highVoiced.notes[i] <= ChordVoicingEngine::harmonicCeiling);
+            REQUIRE(highVoiced.notes[i] >= 0);
+        }
     }
 }
 
