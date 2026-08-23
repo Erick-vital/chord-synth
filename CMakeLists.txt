@@ -105,7 +105,9 @@ add_library(chordsynth_interaction STATIC
     src/interaction/ChordPerformanceController.h
     src/interaction/ChordPerformanceController.cpp
     src/interaction/ChordTransform.h
-    src/interaction/ChordTransform.cpp)
+    src/interaction/ChordTransform.cpp
+    src/interaction/MidiPerformanceMapper.h
+    src/interaction/MidiPerformanceMapper.cpp)
 
 target_include_directories(chordsynth_interaction PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)

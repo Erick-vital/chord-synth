@@ -502,7 +502,7 @@ Re-layout the editor without clipping at the existing 900×620 minimum; increase
 
 ## Phase 5 — MIDI performance mapping and processor integration
 
-### Task 17: Build a pure fixed-capacity MIDI performance mapper
+### Task 17: Build a pure fixed-capacity MIDI performance mapper · [COMPLETED]
 
 **Objective:** Convert opt-in semantic note/CC input into degree chords and temporary colors without duplicating harmony logic.
 
