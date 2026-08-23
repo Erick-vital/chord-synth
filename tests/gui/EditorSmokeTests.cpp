@@ -164,6 +164,16 @@ TEST_CASE("Production PluginEditor instantiates full performance interface", "[g
     auto* commitTransformBtn = findDescendantWithID(*editor, "commit-transform-button");
     REQUIRE(commitTransformBtn != nullptr);
     REQUIRE_FALSE(commitTransformBtn->isEnabled());
+
+    // Preset selector in HeaderBar with 5 built-in presets
+    auto* presetCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "preset-select"));
+    REQUIRE(presetCombo != nullptr);
+    REQUIRE(presetCombo->getNumItems() == 5);
+    REQUIRE(presetCombo->getItemText(0) == "Default (Init)");
+    REQUIRE(presetCombo->getItemText(1) == "Warm Saw Chords");
+    REQUIRE(presetCombo->getItemText(2) == "Ambient Open Keys");
+    REQUIRE(presetCombo->getItemText(3) == "Arp Plucks");
+    REQUIRE(presetCombo->getItemText(4) == "Jazz Tension");
 }
 
 TEST_CASE("Production PluginEditor renders Spanish interface text as UTF-8", "[gui][utf8]") {

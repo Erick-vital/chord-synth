@@ -38,6 +38,7 @@ HeaderBar::HeaderBar(
     presetLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(presetLabel);
 
+    presetComboBox.setComponentID("preset-select");
     presetComboBox.addItem("Default (Init)", 1);
     presetComboBox.setSelectedId(1, juce::dontSendNotification);
     presetComboBox.onChange = [this]() {

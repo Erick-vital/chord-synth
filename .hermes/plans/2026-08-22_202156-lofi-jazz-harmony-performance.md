@@ -562,7 +562,7 @@ Run parameter, processor, arp and long render-safety tests. Commit `feat: integr
 
 ## Phase 6 — Presets, documentation and release validation
 
-### Task 19: Update built-in sound presets to use the musical scenes
+### Task 19: Update built-in sound presets to use the musical scenes · [COMPLETED]
 
 **Objective:** Ensure shipped presets demonstrate the new harmony system rather than only new UI controls.
 

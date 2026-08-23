@@ -637,4 +637,71 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
         REQUIRE(dstProcessor.getHarmonyState().getQualityRule() == music::QualityRule::diminished);
         REQUIRE(dstProcessor.getHarmonyState().getConfiguration().getSpec(3, 4) == spec);
     }
+
+    SECTION("Built-in musical presets demonstrate factory scenes and state synchronization") {
+        ChordSynthAudioProcessor processor;
+
+        // Preset 1: Default (Init) -> Scene A Diatónica
+        Preset initPreset;
+        initPreset.name = "Default (Init)";
+        initPreset.parameters.key = 0;
+        initPreset.parameters.waveform = "sine";
+        initPreset.harmony.setSelectedScene(0);
+        initPreset.harmony.setLiveRevoice(false);
+
+        REQUIRE(PresetSerializer::applyToProcessorState(initPreset, processor.getAPVTS(), processor.getHarmonyState()));
+        REQUIRE(processor.getHarmonyState().getSelectedScene() == 0);
+        REQUIRE_FALSE(processor.getHarmonyState().getLiveRevoice());
+        REQUIRE(processor.getHarmonyState().getConfiguration().getSpec(0, 0).shape == music::ChordShape::triad);
+
+        // Preset 2: Warm Saw Chords -> Scene C Lo-Fi Warm
+        Preset warmPreset;
+        warmPreset.name = "Warm Saw Chords";
+        warmPreset.parameters.waveform = "saw";
+        warmPreset.harmony.setSelectedScene(2);
+        warmPreset.harmony.setLiveRevoice(false);
+
+        REQUIRE(PresetSerializer::applyToProcessorState(warmPreset, processor.getAPVTS(), processor.getHarmonyState()));
+        REQUIRE(processor.getHarmonyState().getSelectedScene() == 2);
+        REQUIRE_FALSE(processor.getHarmonyState().getLiveRevoice());
+        REQUIRE(processor.getHarmonyState().getConfiguration().getSpec(2, 0).shape == music::ChordShape::ninth);
+        REQUIRE(processor.getHarmonyState().getConfiguration().getSpec(2, 0).style == music::VoicingStyle::open);
+
+        // Preset 3: Ambient Open Keys -> Scene C Lo-Fi Warm with Live Revoice
+        Preset ambientPreset;
+        ambientPreset.name = "Ambient Open Keys";
+        ambientPreset.parameters.waveform = "triangle";
+        ambientPreset.harmony.setSelectedScene(2);
+        ambientPreset.harmony.setLiveRevoice(true);
+
+        REQUIRE(PresetSerializer::applyToProcessorState(ambientPreset, processor.getAPVTS(), processor.getHarmonyState()));
+        REQUIRE(processor.getHarmonyState().getSelectedScene() == 2);
+        REQUIRE(processor.getHarmonyState().getLiveRevoice());
+
+        // Preset 4: Arp Plucks -> Scene B Séptimas with Arp enabled
+        Preset arpPreset;
+        arpPreset.name = "Arp Plucks";
+        arpPreset.parameters.waveform = "square";
+        arpPreset.parameters.arpEnabled = true;
+        arpPreset.harmony.setSelectedScene(1);
+        arpPreset.harmony.setLiveRevoice(false);
+
+        REQUIRE(PresetSerializer::applyToProcessorState(arpPreset, processor.getAPVTS(), processor.getHarmonyState()));
+        REQUIRE(processor.getHarmonyState().getSelectedScene() == 1);
+        REQUIRE_FALSE(processor.getHarmonyState().getLiveRevoice());
+        REQUIRE(processor.getHarmonyState().getConfiguration().getSpec(1, 0).shape == music::ChordShape::seventh);
+
+        // Preset 5: Jazz Tension -> Scene D Jazz Tension
+        Preset jazzPreset;
+        jazzPreset.name = "Jazz Tension";
+        jazzPreset.parameters.waveform = "triangle";
+        jazzPreset.harmony.setSelectedScene(3);
+        jazzPreset.harmony.setLiveRevoice(true);
+
+        REQUIRE(PresetSerializer::applyToProcessorState(jazzPreset, processor.getAPVTS(), processor.getHarmonyState()));
+        REQUIRE(processor.getHarmonyState().getSelectedScene() == 3);
+        REQUIRE(processor.getHarmonyState().getLiveRevoice());
+        REQUIRE(processor.getHarmonyState().getConfiguration().getSpec(3, 0).shape == music::ChordShape::sixNine);
+        REQUIRE(processor.getHarmonyState().getConfiguration().getSpec(3, 0).style == music::VoicingStyle::rootless);
+    }
 }

@@ -132,7 +132,7 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
 {
     builtinPresets.clear();
 
-    // Preset 1: Default (Init Synth)
+    // Preset 1: Default (Init) -> Scene A Diatónica
     presets::Preset initPreset;
     initPreset.name = "Default (Init)";
     initPreset.parameters.key = 0; // C
@@ -141,9 +141,11 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     initPreset.parameters.resonance = 0.2f;
     initPreset.parameters.detuneCents = 7.0f;
     initPreset.parameters.masterGainDb = -12.0f;
+    initPreset.harmony.setSelectedScene(0); // Scene A · Diatónica
+    initPreset.harmony.setLiveRevoice(false);
     builtinPresets.push_back(initPreset);
 
-    // Preset 2: Warm Saw Chords
+    // Preset 2: Warm Saw Chords -> Scene C Lo‑Fi Warm
     presets::Preset warmPreset;
     warmPreset.name = "Warm Saw Chords";
     warmPreset.parameters.key = 0;
@@ -154,10 +156,11 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     warmPreset.parameters.chorusMix = 0.4f;
     warmPreset.parameters.reverbMix = 0.3f;
     warmPreset.parameters.masterGainDb = -12.0f;
-    warmPreset.harmony.setSelectedScene(1); // Seventh chords
+    warmPreset.harmony.setSelectedScene(2); // Scene C · Lo‑Fi Warm
+    warmPreset.harmony.setLiveRevoice(false);
     builtinPresets.push_back(warmPreset);
 
-    // Preset 3: Ambient Open Keys
+    // Preset 3: Ambient Open Keys -> Scene C Lo‑Fi Warm with Live Revoice
     presets::Preset ambientPreset;
     ambientPreset.name = "Ambient Open Keys";
     ambientPreset.parameters.key = 0;
@@ -169,11 +172,11 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     ambientPreset.parameters.delayFeedback = 0.4f;
     ambientPreset.parameters.reverbMix = 0.5f;
     ambientPreset.parameters.masterGainDb = -12.0f;
-    ambientPreset.harmony.setSelectedScene(2); // Open voicing
+    ambientPreset.harmony.setSelectedScene(2); // Scene C · Lo‑Fi Warm
     ambientPreset.harmony.setLiveRevoice(true);
     builtinPresets.push_back(ambientPreset);
 
-    // Preset 4: Arp Plucks
+    // Preset 4: Arp Plucks -> Scene B Séptimas
     presets::Preset arpPreset;
     arpPreset.name = "Arp Plucks";
     arpPreset.parameters.key = 0;
@@ -187,7 +190,24 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     arpPreset.parameters.arpGate = 0.7f;
     arpPreset.parameters.delayMix = 0.25f;
     arpPreset.parameters.masterGainDb = -12.0f;
+    arpPreset.harmony.setSelectedScene(1); // Scene B · Séptimas
+    arpPreset.harmony.setLiveRevoice(false);
     builtinPresets.push_back(arpPreset);
+
+    // Preset 5: Jazz Tension -> Scene D Jazz Tension
+    presets::Preset jazzPreset;
+    jazzPreset.name = "Jazz Tension";
+    jazzPreset.parameters.key = 0;
+    jazzPreset.parameters.waveform = "triangle";
+    jazzPreset.parameters.cutoffHz = 3800.0f;
+    jazzPreset.parameters.resonance = 0.35f;
+    jazzPreset.parameters.detuneCents = 9.0f;
+    jazzPreset.parameters.chorusMix = 0.25f;
+    jazzPreset.parameters.reverbMix = 0.35f;
+    jazzPreset.parameters.masterGainDb = -12.0f;
+    jazzPreset.harmony.setSelectedScene(3); // Scene D · Jazz Tension
+    jazzPreset.harmony.setLiveRevoice(true);
+    builtinPresets.push_back(jazzPreset);
 }
 
 void ChordSynthAudioProcessorEditor::loadPresetAtIndex(int index)
@@ -216,6 +236,7 @@ void ChordSynthAudioProcessorEditor::loadPresetAtIndex(int index)
     harmonyToolbar.setTonic(preset.parameters.key);
     harmonyToolbar.setScale(presetScale);
     harmonyToolbar.setRuleMode(isFreeMode);
+    performancePanel.selectScene(preset.harmony.getSelectedScene());
     chordDesignerPanel.setRuleMode(isFreeMode);
     chordDesignerPanel.setSelectedScene(preset.harmony.getSelectedScene());
 
