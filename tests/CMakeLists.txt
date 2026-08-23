@@ -11,13 +11,17 @@ add_executable(ChordSynthTests
     dsp/TempoDelayTests.cpp
     dsp/UiMidiQueueTests.cpp
     interaction/ChordPerformanceControllerTests.cpp
+    interaction/ChordTransformTests.cpp
+    interaction/MidiPerformanceMapperTests.cpp
     music/ArpeggiatorTests.cpp
+    music/ChordRecipeTests.cpp
     music/DiatonicChordVoicerTests.cpp
     music/HarmonyConfigurationTests.cpp
     music/MajorScaleChordMapTests.cpp
     music/MusicalClockTests.cpp
     music/NoteMathTests.cpp
     music/VoicedChordTests.cpp
+    music/VoiceLeadingResolverTests.cpp
     parameters/ParameterLayoutTests.cpp
     plugin/ProcessorSmokeTests.cpp
     presets/PresetSerializerTests.cpp
