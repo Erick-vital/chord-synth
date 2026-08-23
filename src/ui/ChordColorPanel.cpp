@@ -91,8 +91,23 @@ ChordColorPanel::ChordColorPanel(
         btn.setComponentID("chord-color-" + juce::String(i));
         btn.setClickingTogglesState(false);
 
-        // Custom mouse callbacks for press & hold
-        btn.addMouseListener(this, false);
+        // Button state transitions cover mouse and touch press-and-hold.
+        btn.onStateChange = [this, i, &btn]() {
+            const auto index = static_cast<std::size_t>(i);
+            const bool isDown = btn.getState() == juce::Button::buttonDown;
+            if (isDown == pointerButtonsDown[index]) {
+                return;
+            }
+
+            pointerButtonsDown[index] = isDown;
+            if (isDown) {
+                if (!physicalKeysDown[index]) {
+                    triggerColorPress(i);
+                }
+            } else {
+                triggerColorRelease(i);
+            }
+        };
 
         addAndMakeVisible(btn);
     }
@@ -166,6 +181,8 @@ void ChordColorPanel::triggerColorPress(int slotIndex)
 void ChordColorPanel::triggerColorRelease(int slotIndex)
 {
     if (slotIndex < 0 || slotIndex >= 8) return;
+    const auto index = static_cast<std::size_t>(slotIndex);
+    if (physicalKeysDown[index] || pointerButtonsDown[index]) return;
     performanceController.endTransform();
     updateTransformState();
 }
@@ -173,6 +190,7 @@ void ChordColorPanel::triggerColorRelease(int slotIndex)
 void ChordColorPanel::releaseAllColorKeys()
 {
     physicalKeysDown.fill(false);
+    pointerButtonsDown.fill(false);
     for (auto& btn : colorButtons) {
         btn.setState(juce::Button::buttonNormal);
     }
@@ -292,7 +310,9 @@ void ChordColorPanel::timerCallback()
         if (isDown != physicalKeysDown[static_cast<std::size_t>(i)]) {
             physicalKeysDown[static_cast<std::size_t>(i)] = isDown;
             if (isDown) {
-                triggerColorPress(i);
+                if (!pointerButtonsDown[static_cast<std::size_t>(i)]) {
+                    triggerColorPress(i);
+                }
             } else {
                 triggerColorRelease(i);
             }

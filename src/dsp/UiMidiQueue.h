@@ -14,6 +14,7 @@ public:
 
     bool push(const juce::MidiMessage& message) noexcept;
     bool tryPushBatch(std::span<const juce::MidiMessage> messages) noexcept;
+    bool tryPop(juce::MidiMessage& destination) noexcept;
     void drainTo(juce::MidiBuffer& destination, int sampleOffset = 0) noexcept;
 
 private:

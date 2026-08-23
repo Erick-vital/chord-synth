@@ -203,7 +203,8 @@ constexpr std::array<music::ResolvedQuality, 7> naturalMinorDiatonicQualities{
 
         case TransformSlot::three: // sus4 + 7
             spec.shape = music::ChordShape::sus4;
-            // sus4 in v1 is triad-like sus4
+            spec.extension = music::ChordExtension::seventh;
+            spec.qualityRule = music::QualityRule::dominant;
             label = "sus4 Tensión";
             break;
 

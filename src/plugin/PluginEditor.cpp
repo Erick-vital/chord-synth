@@ -87,6 +87,7 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
 
     performanceController.setScene(p.getHarmonyState().getSelectedScene());
     performanceController.setLiveRevoice(p.getHarmonyState().getLiveRevoice());
+    performancePanel.setLiveRevoice(p.getHarmonyState().getLiveRevoice());
 
     bool isFreeMode = (p.getHarmonyState().getQualityRule() != music::QualityRule::diatonic);
     performanceController.setDiatonicMode(!isFreeMode);
@@ -101,6 +102,10 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
     performancePanel.onSceneSelected = [this](int sceneIndex) {
         audioProcessor.getHarmonyState().setSelectedScene(sceneIndex);
         chordDesignerPanel.setSelectedScene(sceneIndex);
+    };
+
+    performancePanel.onLiveRevoiceChanged = [this](bool enabled) {
+        audioProcessor.getHarmonyState().setLiveRevoice(enabled);
     };
 
     chordColorPanel.onTransformCommitted = [this]() {
@@ -230,6 +235,7 @@ void ChordSynthAudioProcessorEditor::loadPresetAtIndex(int index)
     performanceController.setScale(presetScale);
     performanceController.setScene(preset.harmony.getSelectedScene());
     performanceController.setLiveRevoice(preset.harmony.getLiveRevoice());
+    performancePanel.setLiveRevoice(preset.harmony.getLiveRevoice());
 
     bool isFreeMode = (preset.harmony.getQualityRule() != music::QualityRule::diatonic);
     performanceController.setDiatonicMode(!isFreeMode);

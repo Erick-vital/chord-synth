@@ -7,6 +7,7 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include "music/HarmonyConfiguration.h"
 #include "music/DiatonicChordVoicer.h"
+#include "music/VoiceLeadingResolver.h"
 #include "interaction/ChordTransform.h"
 #include "dsp/UiMidiQueue.h"
 
@@ -99,6 +100,9 @@ public:
 private:
     void applyLiveRevoicing(int targetScene) noexcept;
     bool sendVoicingDifferential(const music::VoicedChord& voiced) noexcept;
+    [[nodiscard]] music::VoicedChord voiceForPerformance(
+        int degree,
+        const music::VoicingSpec& spec) const noexcept;
     [[nodiscard]] music::VoicingSpec getEffectiveBaseSpec(int sceneIndex, int degreeIndex) const noexcept;
 
     const music::HarmonyConfiguration& config;

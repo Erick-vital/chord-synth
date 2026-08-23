@@ -43,6 +43,77 @@ public:
             static_cast<ChordVoice*>(baseVoice)->setDetuneCents(detuneCents);
         }
     }
+
+protected:
+    juce::SynthesiserVoice* findVoiceToSteal(
+        juce::SynthesiserSound* soundToPlay,
+        int /*midiChannel*/,
+        int midiNoteNumber) const override
+    {
+        juce::SynthesiserVoice* oldestMatchingNote = nullptr;
+        juce::SynthesiserVoice* oldestReleased = nullptr;
+        juce::SynthesiserVoice* oldestUnprotected = nullptr;
+        juce::SynthesiserVoice* oldestNonProtected = nullptr;
+        juce::SynthesiserVoice* low = nullptr;
+        juce::SynthesiserVoice* top = nullptr;
+
+        const auto chooseOldest = [](juce::SynthesiserVoice*& candidate,
+                                     juce::SynthesiserVoice* voice) noexcept {
+            if (candidate == nullptr || voice->wasStartedBefore(*candidate)) {
+                candidate = voice;
+            }
+        };
+
+        for (int index = 0; index < getNumVoices(); ++index) {
+            auto* voice = getVoice(index);
+            if (voice == nullptr || !voice->canPlaySound(soundToPlay)) {
+                continue;
+            }
+
+            if (voice->getCurrentlyPlayingNote() == midiNoteNumber) {
+                chooseOldest(oldestMatchingNote, voice);
+            }
+            if (!voice->isPlayingButReleased()) {
+                if (low == nullptr || voice->getCurrentlyPlayingNote() < low->getCurrentlyPlayingNote()) {
+                    low = voice;
+                }
+                if (top == nullptr || voice->getCurrentlyPlayingNote() > top->getCurrentlyPlayingNote()) {
+                    top = voice;
+                }
+            }
+        }
+
+        if (top == low) {
+            top = nullptr;
+        }
+        if (oldestMatchingNote != nullptr) {
+            return oldestMatchingNote;
+        }
+
+        for (int index = 0; index < getNumVoices(); ++index) {
+            auto* voice = getVoice(index);
+            if (voice == nullptr || !voice->canPlaySound(soundToPlay)
+                || voice == low || voice == top) {
+                continue;
+            }
+            chooseOldest(oldestNonProtected, voice);
+            if (voice->isPlayingButReleased()) {
+                chooseOldest(oldestReleased, voice);
+            }
+            if (!voice->isKeyDown()) {
+                chooseOldest(oldestUnprotected, voice);
+            }
+        }
+
+        if (oldestReleased != nullptr) {
+            return oldestReleased;
+        }
+        if (oldestUnprotected != nullptr) {
+            return oldestUnprotected;
+        }
+
+        return oldestNonProtected != nullptr ? oldestNonProtected : (top != nullptr ? top : low);
+    }
 };
 
 } // namespace dsp
@@ -92,9 +163,11 @@ private:
     dsp::Reverb reverb;
     music::Arpeggiator arpeggiator;
     music::DiatonicChordVoicer chordVoicer;
+    state::HarmonyState harmonyState;
     interaction::MidiPerformanceMapper midiPerformanceMapper;
     dsp::UiMidiQueue uiMidiQueue;
-    state::HarmonyState harmonyState;
+    juce::MidiBuffer workingMidi;
+    juce::MidiBuffer synthMidiScratch;
     parameters::AudioProcessorValueTreeState apvts;
     std::atomic<float>* waveformParameter{nullptr};
     std::atomic<float>* cutoffParameter{nullptr};

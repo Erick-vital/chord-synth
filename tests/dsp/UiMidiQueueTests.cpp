@@ -71,6 +71,25 @@ TEST_CASE("UiMidiQueue operations and real-time thread safety", "[dsp][uimidi]")
         REQUIRE(queue.push(overflowMsg));
     }
 
+    SECTION("Rejects long MIDI messages atomically before they reach the audio thread") {
+        const std::uint8_t sysExData[]{0xf0, 0x01, 0x02, 0xf7};
+        const auto sysEx = juce::MidiMessage::createSysExMessage(sysExData, static_cast<int>(std::size(sysExData)));
+
+        REQUIRE_FALSE(queue.push(sysEx));
+        REQUIRE(queue.push(juce::MidiMessage::noteOn(1, 60, 0.5f)));
+
+        const std::vector<juce::MidiMessage> mixedBatch{
+            juce::MidiMessage::noteOn(1, 64, 0.5f), sysEx
+        };
+        REQUIRE_FALSE(queue.tryPushBatch(mixedBatch));
+
+        juce::MidiBuffer destination;
+        queue.drainTo(destination, 0);
+        REQUIRE(destination.getNumEvents() == 1);
+        const auto first = *destination.begin();
+        REQUIRE(first.getMessage().getNoteNumber() == 60);
+    }
+
     SECTION("Note-on and note-off survive push and drain cycle") {
         auto noteOn = juce::MidiMessage::noteOn(2, 72, (juce::uint8)100);
         auto noteOff = juce::MidiMessage::noteOff(2, 72, (juce::uint8)0);

@@ -4,6 +4,7 @@
 #include "interaction/MidiPerformanceMapper.h"
 #include "music/HarmonyConfiguration.h"
 #include "music/DiatonicChordVoicer.h"
+#include "music/VoiceLeadingResolver.h"
 
 using namespace chordsynth;
 using namespace chordsynth::interaction;
@@ -329,6 +330,78 @@ TEST_CASE("MidiPerformanceMapper all-notes-off and reset clears active notes saf
         REQUIRE_FALSE(mapper.hasActiveChord());
         REQUIRE_FALSE(mapper.getActiveTransformSlot().has_value());
     }
+}
+
+TEST_CASE("MidiPerformanceMapper repeated and overlapping degree notes retain trigger ownership", "[interaction][midi_mapper]") {
+    HarmonyConfiguration config;
+    DiatonicChordVoicer voicer;
+    MidiPerformanceMapper mapper(config, voicer);
+    mapper.setEnabled(true);
+
+    juce::MidiBuffer input;
+    juce::MidiBuffer output;
+
+    input.addEvent(juce::MidiMessage::noteOn(1, 36, 0.8f), 0);
+    input.addEvent(juce::MidiMessage::noteOn(1, 36, 0.8f), 1);
+    mapper.processBlock(input, output, 64);
+    REQUIRE(mapper.getActiveDegree() == 0);
+
+    input.clear();
+    output.clear();
+    input.addEvent(juce::MidiMessage::noteOff(1, 36), 2);
+    mapper.processBlock(input, output, 64);
+    REQUIRE(mapper.getActiveDegree() == 0);
+    REQUIRE(parseMidiBuffer(output).empty());
+
+    input.clear();
+    output.clear();
+    input.addEvent(juce::MidiMessage::noteOn(1, 37, 0.9f), 3);
+    mapper.processBlock(input, output, 64);
+    REQUIRE(mapper.getActiveDegree() == 1);
+
+    input.clear();
+    output.clear();
+    input.addEvent(juce::MidiMessage::noteOff(1, 37), 4);
+    mapper.processBlock(input, output, 64);
+    REQUIRE(mapper.getActiveDegree() == 0);
+    REQUIRE_FALSE(parseMidiBuffer(output).empty());
+
+    input.clear();
+    output.clear();
+    input.addEvent(juce::MidiMessage::noteOff(1, 36), 5);
+    mapper.processBlock(input, output, 64);
+    REQUIRE_FALSE(mapper.hasActiveChord());
+}
+
+TEST_CASE("MidiPerformanceMapper applies nearest voice leading from sounding notes", "[interaction][midi_mapper]") {
+    HarmonyConfiguration config;
+    DiatonicChordVoicer voicer;
+    MidiPerformanceMapper mapper(config, voicer);
+    mapper.setEnabled(true);
+    mapper.setContext({
+        .tonic = 0,
+        .scale = Scale::major,
+        .diatonicMode = true,
+        .sceneIndex = 1,
+        .palette = TransformPalette::loFi
+    });
+
+    juce::MidiBuffer input;
+    juce::MidiBuffer output;
+    input.addEvent(juce::MidiMessage::noteOn(1, 42, 0.8f), 0);
+    mapper.processBlock(input, output, 64);
+    const auto previous = mapper.getActiveHarmonicNotes();
+
+    const auto spec = config.getSpec(1, 0);
+    const auto defaultTarget = voicer.voiceChord(0, 0, spec, Scale::major).notes;
+    const auto nearestTarget = VoiceLeadingResolver::resolveNearestVoiceLeading(previous, defaultTarget);
+    REQUIRE(nearestTarget != defaultTarget);
+
+    input.clear();
+    output.clear();
+    input.addEvent(juce::MidiMessage::noteOn(1, 36, 0.8f), 1);
+    mapper.processBlock(input, output, 64);
+    REQUIRE(mapper.getActiveHarmonicNotes() == nearestTarget);
 }
 
 TEST_CASE("MidiPerformanceMapper in-place processBlock overload works identically", "[interaction][midi_mapper]") {

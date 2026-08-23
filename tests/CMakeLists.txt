@@ -43,6 +43,17 @@ target_include_directories(ChordSynthTests PRIVATE
 
 target_compile_features(ChordSynthTests PRIVATE cxx_std_20)
 
+if(UNIX AND NOT APPLE)
+    target_sources(ChordSynthTests PRIVATE dsp/RealtimeAllocationTests.cpp)
+
+    target_link_options(ChordSynthTests PRIVATE
+        "-Wl,--wrap=malloc"
+        "-Wl,--wrap=calloc"
+        "-Wl,--wrap=realloc"
+        "-Wl,--wrap=free"
+        "-Wl,--wrap=posix_memalign")
+endif()
+
 include(Catch)
 catch_discover_tests(ChordSynthTests)
 
@@ -75,6 +86,24 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProductionUiSourcesContract.cmake)
+
+add_test(
+    NAME FactorySceneLabelsContract
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FactorySceneLabelsContract.cmake)
+
+add_test(
+    NAME LiveRevoicePersistenceContract
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/LiveRevoicePersistenceContract.cmake)
+
+add_test(
+    NAME ChordColorPointerContract
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ChordColorPointerContract.cmake)
 
 add_test(
     NAME UiSyntaxVerificationContract
@@ -142,7 +171,17 @@ if(CHORDSYNTH_BUILD_PLUGIN)
     # production sources receive from JUCE's generated target.
     target_compile_definitions(ChordSynthGuiSmokeTests PRIVATE
         JUCE_STANDALONE_APPLICATION=0
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
         JucePlugin_Name="ChordSynth")
+
+    # juce_gui_extra compiles its GTK peer implementation into this standalone
+    # smoke executable, so propagate the distro-provided include/link flags.
+    if(UNIX AND NOT APPLE)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0)
+        target_link_libraries(ChordSynthGuiSmokeTests PRIVATE PkgConfig::GTK3)
+    endif()
 
     catch_discover_tests(ChordSynthGuiSmokeTests)
 endif()

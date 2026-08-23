@@ -1,12 +1,15 @@
 #include "interaction/MidiPerformanceMapper.h"
 #include <algorithm>
+#include <limits>
 
 namespace chordsynth::interaction {
 
 MidiPerformanceMapper::MidiPerformanceMapper(
     const music::HarmonyConfiguration& harmonyConfig,
-    const music::DiatonicChordVoicer& chordVoicer) noexcept
-    : config(harmonyConfig), voicer(chordVoicer) {}
+    const music::DiatonicChordVoicer& chordVoicer)
+    : config(harmonyConfig), voicer(chordVoicer) {
+    scratchBuffer.ensureSize(realtimeMidiBufferBytes);
+}
 
 void MidiPerformanceMapper::setContext(const Context& newContext) noexcept {
     const int normalizedTonic = ((newContext.tonic % 12) + 12) % 12;
@@ -31,6 +34,10 @@ void MidiPerformanceMapper::reset() noexcept {
     activeHarmonicNotes = music::NoteSet{};
     activeBassMidi.reset();
     activeVelocity = 0.8f;
+    heldDegreeCounts.fill(0);
+    degreePressOrder.fill(0);
+    degreeVelocities.fill(0.8f);
+    nextPressOrder = 1;
     scratchBuffer.clear();
 }
 
@@ -42,22 +49,28 @@ music::VoicingSpec MidiPerformanceMapper::getEffectiveBaseSpec(int sceneIndex, i
     return spec;
 }
 
-music::VoicedChord MidiPerformanceMapper::computeCurrentVoicing(int degree) const noexcept {
-    const auto baseSpec = getEffectiveBaseSpec(context.sceneIndex, degree);
+music::RealtimeVoicedChord MidiPerformanceMapper::computeCurrentVoicing(int degree) const noexcept {
+    auto spec = getEffectiveBaseSpec(context.sceneIndex, degree);
     if (activeTransformSlot.has_value()) {
         const auto transformResult = applyChordTransform(
             context.palette,
             *activeTransformSlot,
-            baseSpec,
+            spec,
             context.scale,
             degree);
-        return voicer.voiceChord(context.tonic, degree, transformResult.spec, context.scale);
+        spec = transformResult.spec;
     }
-    return voicer.voiceChord(context.tonic, degree, baseSpec, context.scale);
+    auto voiced = voicer.voiceChordRealtime(context.tonic, degree, spec, context.scale);
+    if (spec.voiceLeading == music::VoiceLeadingMode::nearest && !activeHarmonicNotes.empty()) {
+        voiced.notes = music::VoiceLeadingResolver::resolveNearestVoiceLeading(
+            activeHarmonicNotes,
+            voiced.notes);
+    }
+    return voiced;
 }
 
 void MidiPerformanceMapper::sendDifferentialVoicing(
-    const music::VoicedChord& newVoiced,
+    const music::RealtimeVoicedChord& newVoiced,
     float velocity,
     int sampleOffset,
     juce::MidiBuffer& outputMidi) noexcept {
@@ -127,6 +140,8 @@ void MidiPerformanceMapper::emitAllMappedNotesOff(int sampleOffset, juce::MidiBu
     activeBassMidi.reset();
     activeDegree.reset();
     activeTransformSlot.reset();
+    heldDegreeCounts.fill(0);
+    degreePressOrder.fill(0);
 }
 
 void MidiPerformanceMapper::handleDegreeNoteOn(
@@ -136,6 +151,19 @@ void MidiPerformanceMapper::handleDegreeNoteOn(
     juce::MidiBuffer& outputMidi) noexcept {
 
     if (!music::HarmonyConfiguration::isValidDegree(degree)) {
+        return;
+    }
+
+    const auto index = static_cast<std::size_t>(degree);
+    auto& heldCount = heldDegreeCounts[index];
+    if (heldCount < std::numeric_limits<std::uint8_t>::max()) {
+        ++heldCount;
+    }
+    degreeVelocities[index] = velocity;
+    if (heldCount == 1) {
+        degreePressOrder[index] = nextPressOrder++;
+    }
+    if (activeDegree.has_value() && *activeDegree == degree) {
         return;
     }
 
@@ -152,7 +180,35 @@ void MidiPerformanceMapper::handleDegreeNoteOff(
     int sampleOffset,
     juce::MidiBuffer& outputMidi) noexcept {
 
-    if (!activeDegree.has_value() || *activeDegree != degree) {
+    if (!music::HarmonyConfiguration::isValidDegree(degree)) {
+        return;
+    }
+
+    auto& heldCount = heldDegreeCounts[static_cast<std::size_t>(degree)];
+    if (heldCount == 0) {
+        return;
+    }
+    --heldCount;
+    if (heldCount > 0 || !activeDegree.has_value() || *activeDegree != degree) {
+        return;
+    }
+
+    int fallbackDegree = -1;
+    std::uint64_t newestOrder = 0;
+    for (int candidate = 0; candidate < 7; ++candidate) {
+        const auto index = static_cast<std::size_t>(candidate);
+        if (heldDegreeCounts[index] > 0 && degreePressOrder[index] > newestOrder) {
+            newestOrder = degreePressOrder[index];
+            fallbackDegree = candidate;
+        }
+    }
+
+    if (fallbackDegree >= 0) {
+        activeDegree = fallbackDegree;
+        activeTransformSlot.reset();
+        activeVelocity = degreeVelocities[static_cast<std::size_t>(fallbackDegree)];
+        const auto voiced = computeCurrentVoicing(fallbackDegree);
+        sendDifferentialVoicing(voiced, activeVelocity, sampleOffset, outputMidi);
         return;
     }
 

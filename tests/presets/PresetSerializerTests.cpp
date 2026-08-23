@@ -206,6 +206,8 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         original.name = "Extended Harmony V3";
         original.parameters.key = 5; // F
         original.parameters.waveform = "saw";
+        original.parameters.performanceMidiEnabled = true;
+        original.parameters.transformPalette = 2;
         original.harmony.setSelectedScene(3);
         original.harmony.setLiveRevoice(true);
         original.harmony.setQualityRule(music::QualityRule::dominant);
@@ -234,6 +236,8 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         REQUIRE(restored.name == "Extended Harmony V3");
         REQUIRE(restored.parameters.key == 5);
         REQUIRE(restored.parameters.waveform == "saw");
+        REQUIRE(restored.parameters.performanceMidiEnabled);
+        REQUIRE(restored.parameters.transformPalette == 2);
         REQUIRE(restored.harmony.getSelectedScene() == 3);
         REQUIRE(restored.harmony.getLiveRevoice() == true);
         REQUIRE(restored.harmony.getQualityRule() == music::QualityRule::dominant);
@@ -350,9 +354,9 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         REQUIRE(spec.voiceLeading == music::VoiceLeadingMode::manual);
     }
 
-    SECTION("Unsupported schema version 4 fails deserialization") {
-        juce::String futureV4 = R"({ "schema_version": 4, "name": "Future V4", "parameters": {} })";
-        auto result = PresetSerializer::fromJson(futureV4);
+    SECTION("Unsupported schema version 5 fails deserialization") {
+        juce::String futureV5 = R"({ "schema_version": 5, "name": "Future V5", "parameters": {} })";
+        auto result = PresetSerializer::fromJson(futureV5);
         REQUIRE_FALSE(result.has_value());
     }
 
@@ -618,7 +622,7 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
             srcProcessor.getHarmonyState(),
             "HarmonyPreset");
 
-        REQUIRE(preset.schemaVersion == 3);
+        REQUIRE(preset.schemaVersion == 4);
         REQUIRE(preset.name == "HarmonyPreset");
         REQUIRE(preset.harmony.getSelectedScene() == 3);
         REQUIRE(preset.harmony.getLiveRevoice() == true);

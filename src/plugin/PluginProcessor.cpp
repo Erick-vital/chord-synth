@@ -59,6 +59,41 @@ void removeUnsafeParameterChildren(juce::ValueTree& state,
     }
 }
 
+constexpr int maxRealtimeMidiEvents = 256;
+
+bool isRealtimeSafeMidiMessage(const juce::MidiMessage& message) noexcept
+{
+    return !message.isSysEx() && message.getRawDataSize() <= 3;
+}
+
+int appendRealtimeSafeEvents(const juce::MidiBuffer& source,
+                             juce::MidiBuffer& destination,
+                             int maxEvents,
+                             int numSamples) noexcept
+{
+    int copied = 0;
+    int inspected = 0;
+    for (const auto metadata : source) {
+        // Bound total iterator work, including malformed/unsupported events.
+        // Bounding accepted events alone still permits an unbounded scan on the
+        // audio thread when a host supplies only rejected MIDI.
+        if (inspected == maxEvents) {
+            break;
+        }
+        ++inspected;
+        if (metadata.samplePosition < 0 || metadata.samplePosition >= numSamples) {
+            continue;
+        }
+        const auto message = metadata.getMessage();
+        if (!isRealtimeSafeMidiMessage(message)) {
+            continue;
+        }
+        destination.addEvent(message, metadata.samplePosition);
+        ++copied;
+    }
+    return copied;
+}
+
 } // namespace
 
 namespace chordsynth {
@@ -120,6 +155,8 @@ ChordSynthAudioProcessor::ChordSynthAudioProcessor()
     jassert(scaleParameter != nullptr);
     jassert(performanceMidiEnabledParameter != nullptr);
     jassert(transformPaletteParameter != nullptr);
+    workingMidi.ensureSize(interaction::MidiPerformanceMapper::realtimeMidiBufferBytes);
+    synthMidiScratch.ensureSize(interaction::MidiPerformanceMapper::realtimeMidiBufferBytes);
 }
 
 ChordSynthAudioProcessor::~ChordSynthAudioProcessor()
@@ -254,7 +291,16 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
 
-    uiMidiQueue.drainTo(midiMessages, 0);
+    workingMidi.clear();
+    auto realtimeEventCount = appendRealtimeSafeEvents(
+        midiMessages, workingMidi, maxRealtimeMidiEvents, buffer.getNumSamples());
+    juce::MidiMessage uiMessage;
+    while (realtimeEventCount < maxRealtimeMidiEvents && uiMidiQueue.tryPop(uiMessage)) {
+        if (isRealtimeSafeMidiMessage(uiMessage)) {
+            workingMidi.addEvent(uiMessage, 0);
+            ++realtimeEventCount;
+        }
+    }
 
     // Update and process MIDI Performance Mapper
     const auto rawMidiPerfEnabled = performanceMidiEnabledParameter != nullptr
@@ -287,7 +333,7 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
             .palette = pal
         });
 
-        midiPerformanceMapper.processBlock(midiMessages, buffer.getNumSamples());
+        midiPerformanceMapper.processBlock(workingMidi, buffer.getNumSamples());
     }
 
     double hostBpm = music::MusicalClock::defaultBpm;
@@ -304,7 +350,8 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     const bool isArpActive = rawArpEnabled > 0.5f;
     arpeggiator.setEnabled(isArpActive);
 
-    juce::MidiBuffer synthMidi;
+    synthMidiScratch.clear();
+    auto& synthMidi = synthMidiScratch;
     if (isArpActive) {
         const auto rawArpMode = arpModeParameter != nullptr
             ? arpModeParameter->load(std::memory_order_relaxed) : 0.0f;
@@ -317,7 +364,7 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         arpeggiator.setGate(rawArpGate);
 
         // Separate channel 2 (bass / non-arpeggiated) from channel 1 and other MIDI
-        for (const auto meta : midiMessages) {
+        for (const auto meta : workingMidi) {
             const auto msg = meta.getMessage();
             if (msg.getChannel() == 2) {
                 // Pass bass directly to synthMidi without arpeggiating
@@ -338,7 +385,7 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
 
         arpeggiator.processBlock(synthMidi, buffer.getNumSamples(), hostBpm);
     } else {
-        synthMidi.addEvents(midiMessages, 0, buffer.getNumSamples(), 0);
+        synthMidi.addEvents(workingMidi, 0, buffer.getNumSamples(), 0);
     }
 
     const auto rawWaveform = waveformParameter != nullptr

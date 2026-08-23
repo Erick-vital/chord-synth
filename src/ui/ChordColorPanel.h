@@ -63,6 +63,7 @@ private:
     std::unique_ptr<parameters::AudioProcessorValueTreeState::ComboBoxAttachment> paletteAttachment;
 
     std::array<bool, 8> physicalKeysDown{false, false, false, false, false, false, false, false};
+    std::array<bool, 8> pointerButtonsDown{false, false, false, false, false, false, false, false};
     int feedbackTimerTicks{0};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ChordColorPanel)

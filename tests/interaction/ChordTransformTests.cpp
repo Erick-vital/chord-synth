@@ -231,11 +231,14 @@ TEST_CASE("Spice palette specific transformation semantics", "[interaction][tran
         REQUIRE(v.label == "Cdim7");
     }
 
-    SECTION("Slot 3: sus4") {
+    SECTION("Slot 3: dominant sus4 plus seventh") {
         auto res = applyChordTransform(TransformPalette::spice, TransformSlot::three, base, Scale::major, 0);
         REQUIRE(res.spec.shape == ChordShape::sus4);
+        REQUIRE(res.spec.extension == ChordExtension::seventh);
+        REQUIRE(res.spec.qualityRule == QualityRule::dominant);
         auto v = voicer.voiceChord(0, 0, res.spec, Scale::major);
-        REQUIRE(v.label == "Csus4");
+        REQUIRE(v.label == "C7sus4");
+        REQUIRE(v.notes == NoteSet({48, 53, 55, 58}, 4));
     }
 
     SECTION("Slot 4: Dominant 9") {

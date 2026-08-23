@@ -18,20 +18,38 @@ constexpr std::array<std::string_view, 12> pitchNames{
     "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
 };
 
+[[nodiscard]] ChordRecipe resolveSpecRecipe(
+    Scale scale,
+    int degree,
+    ChordShape activeShape,
+    const VoicingSpec& spec) noexcept {
+    auto recipe = resolveChordRecipe(scale, degree, activeShape, spec.qualityRule);
+    const bool suspendedSeventh =
+        (activeShape == ChordShape::sus2 || activeShape == ChordShape::sus4) &&
+        spec.extension == ChordExtension::seventh;
+    if (suspendedSeventh) {
+        const auto seventhRecipe = resolveChordRecipe(
+            scale,
+            degree,
+            ChordShape::seventh,
+            spec.qualityRule);
+        recipe.seventh = seventhRecipe.seventh;
+    }
+    return recipe;
+}
+
 } // namespace
 
-VoicedChord DiatonicChordVoicer::voiceChord(
+RealtimeVoicedChord DiatonicChordVoicer::voiceChordRealtime(
     int tonicPitchClass,
     int degree,
     const VoicingSpec& spec,
-    Scale scale) const {
-    if (degree < 0 || degree > 6) {
-        throw std::out_of_range("Degree must be between 0 and 6");
-    }
+    Scale scale) const noexcept {
+    const int safeDegree = std::clamp(degree, 0, 6);
 
     const int normalizedTonic = ((tonicPitchClass % 12) + 12) % 12;
     const int baseMidi = 12 * (spec.baseOctave + 1) + normalizedTonic;
-    const auto degreeIndex = static_cast<std::size_t>(degree);
+    const auto degreeIndex = static_cast<std::size_t>(safeDegree);
     const auto& scaleSemitones = scale == Scale::naturalMinor
         ? naturalMinorScaleSemitones : majorScaleSemitones;
     const int rootOffset = scaleSemitones[degreeIndex];
@@ -41,7 +59,7 @@ VoicedChord DiatonicChordVoicer::voiceChord(
     const ChordShape activeShape = (spec.shape != ChordShape::triad)
         ? spec.shape
         : (spec.extension == ChordExtension::seventh ? ChordShape::seventh : ChordShape::triad);
-    const ChordRecipe recipe = resolveChordRecipe(scale, degree, activeShape, spec.qualityRule);
+    const ChordRecipe recipe = resolveSpecRecipe(scale, safeDegree, activeShape, spec);
 
     ChordQuality quality = ChordQuality::major;
     if (recipe.quality == ResolvedQuality::minor) {
@@ -120,17 +138,6 @@ VoicedChord DiatonicChordVoicer::voiceChord(
 
     NoteSet voicedNotes = ChordVoicingEngine::applyVoicing(candidateTones, recipe, activeShape, spec);
 
-    // Boundary check for MIDI note numbers (0..127)
-    for (int i = 0; i < voicedNotes.size(); ++i) {
-        if (voicedNotes[static_cast<std::size_t>(i)] < 0 || voicedNotes[static_cast<std::size_t>(i)] > 127) {
-            throw std::out_of_range("Generated MIDI notes exceed range 0..127");
-        }
-    }
-
-    // Generate Label
-    const int rootPitchClass = ((rootMidi % 12) + 12) % 12;
-    std::string label = resolveChordLabel(rootPitchClass, recipe, activeShape);
-
     // Calculate optional bassMidi based on spec.bassMode
     std::optional<int> bassMidi{};
     if (spec.bassMode == BassMode::root) {
@@ -140,17 +147,54 @@ VoicedChord DiatonicChordVoicer::voiceChord(
         const int slashOffset = scaleSemitones[static_cast<std::size_t>(clampedSlashDegree)];
         const int slashMidi = baseMidi + slashOffset;
         bassMidi = ChordVoicingEngine::transposeBassToRange(slashMidi);
+    }
 
-        const int bassPitchClass = ((slashMidi % 12) + 12) % 12;
+    return RealtimeVoicedChord{
+        .degree = safeDegree,
+        .rootMidi = rootMidi,
+        .notes = voicedNotes,
+        .bassMidi = bassMidi,
+    };
+}
+
+VoicedChord DiatonicChordVoicer::voiceChord(
+    int tonicPitchClass,
+    int degree,
+    const VoicingSpec& spec,
+    Scale scale) const {
+    if (degree < 0 || degree > 6) {
+        throw std::out_of_range("Degree must be between 0 and 6");
+    }
+
+    const auto realtime = voiceChordRealtime(tonicPitchClass, degree, spec, scale);
+    for (int i = 0; i < realtime.notes.size(); ++i) {
+        if (realtime.notes[static_cast<std::size_t>(i)] < 0 || realtime.notes[static_cast<std::size_t>(i)] > 127) {
+            throw std::out_of_range("Generated MIDI notes exceed range 0..127");
+        }
+    }
+
+    const ChordShape activeShape = (spec.shape != ChordShape::triad)
+        ? spec.shape
+        : (spec.extension == ChordExtension::seventh ? ChordShape::seventh : ChordShape::triad);
+    const ChordRecipe recipe = resolveSpecRecipe(scale, degree, activeShape, spec);
+    const int rootPitchClass = ((realtime.rootMidi % 12) + 12) % 12;
+    std::string label = resolveChordLabel(rootPitchClass, recipe, activeShape);
+
+    if (spec.bassMode == BassMode::slashDegree) {
+        const auto& scaleSemitones = scale == Scale::naturalMinor
+            ? naturalMinorScaleSemitones : majorScaleSemitones;
+        const int normalizedTonic = ((tonicPitchClass % 12) + 12) % 12;
+        const int clampedSlashDegree = std::clamp(spec.slashDegree, 0, 6);
+        const int bassPitchClass = (normalizedTonic + scaleSemitones[static_cast<std::size_t>(clampedSlashDegree)]) % 12;
         label += "/" + std::string(pitchNames[static_cast<std::size_t>(bassPitchClass)]);
     }
 
     return VoicedChord{
-        .degree = degree,
-        .rootMidi = rootMidi,
+        .degree = realtime.degree,
+        .rootMidi = realtime.rootMidi,
         .spec = spec,
-        .notes = voicedNotes,
-        .bassMidi = bassMidi,
+        .notes = realtime.notes,
+        .bassMidi = realtime.bassMidi,
         .label = std::move(label),
     };
 }

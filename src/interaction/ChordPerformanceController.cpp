@@ -62,6 +62,18 @@ music::VoicingSpec ChordPerformanceController::getEffectiveBaseSpec(int sceneInd
     return spec;
 }
 
+music::VoicedChord ChordPerformanceController::voiceForPerformance(
+    int degree,
+    const music::VoicingSpec& spec) const noexcept {
+    auto voiced = voicer.voiceChord(tonic, degree, spec, scale);
+    if (spec.voiceLeading == music::VoiceLeadingMode::nearest && activeChord.has_value()) {
+        voiced.notes = music::VoiceLeadingResolver::resolveNearestVoiceLeading(
+            activeChord->notes,
+            voiced.notes);
+    }
+    return voiced;
+}
+
 bool ChordPerformanceController::sendVoicingDifferential(const music::VoicedChord& voiced) noexcept {
     if (!activeChord.has_value()) {
         return false;
@@ -140,7 +152,7 @@ void ChordPerformanceController::applyLiveRevoicing(int targetScene) noexcept {
 
     const int degree = activeChord->degree;
     const auto spec = getEffectiveBaseSpec(targetScene, degree);
-    const auto voiced = voicer.voiceChord(tonic, degree, spec, scale);
+    const auto voiced = voiceForPerformance(degree, spec);
     sendVoicingDifferential(voiced);
 }
 
@@ -157,7 +169,7 @@ void ChordPerformanceController::revoiceActiveChordIfHeld(int degree) noexcept {
             baseSpec,
             scale,
             degree);
-        const auto voiced = voicer.voiceChord(tonic, degree, transformResult.spec, scale);
+        const auto voiced = voiceForPerformance(degree, transformResult.spec);
         sendVoicingDifferential(voiced);
     } else {
         applyLiveRevoicing(currentScene);
@@ -177,7 +189,7 @@ bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcep
     activeTransform.reset();
 
     const auto spec = getEffectiveBaseSpec(currentScene, degree);
-    const auto voiced = voicer.voiceChord(tonic, degree, spec, scale);
+    const auto voiced = voiceForPerformance(degree, spec);
     const auto& newNotes = voiced.notes;
 
     if (newNotes.empty()) {
@@ -265,7 +277,9 @@ void ChordPerformanceController::releaseActiveChord() noexcept {
 
     if (batchCount > 0) {
         std::span<const juce::MidiMessage> batch(batchMessages.data(), batchCount);
-        output.tryPushBatch(batch);
+        if (!output.tryPushBatch(batch)) {
+            return;
+        }
     }
 
     activeChord.reset();
@@ -284,7 +298,7 @@ bool ChordPerformanceController::beginTransform(TransformPalette palette, Transf
     const int degree = activeChord->degree;
     const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
     const auto transformResult = applyChordTransform(palette, slot, baseSpec, scale, degree);
-    const auto voiced = voicer.voiceChord(tonic, degree, transformResult.spec, scale);
+    const auto voiced = voiceForPerformance(degree, transformResult.spec);
 
     if (!sendVoicingDifferential(voiced)) {
         return false;
@@ -302,8 +316,10 @@ void ChordPerformanceController::endTransform() noexcept {
     if (activeChord.has_value()) {
         const int degree = activeChord->degree;
         const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
-        const auto voiced = voicer.voiceChord(tonic, degree, baseSpec, scale);
-        sendVoicingDifferential(voiced);
+        const auto voiced = voiceForPerformance(degree, baseSpec);
+        if (!sendVoicingDifferential(voiced)) {
+            return;
+        }
     }
 
     activeTransform.reset();

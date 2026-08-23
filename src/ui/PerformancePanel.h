@@ -29,9 +29,11 @@ public:
 
     void selectDegree(int degreeIndex);
     void selectScene(int sceneIndex);
+    void setLiveRevoice(bool enabled);
 
     std::function<void(int degreeIndex)> onDegreeSelected;
     std::function<void(int sceneIndex)> onSceneSelected;
+    std::function<void(bool enabled)> onLiveRevoiceChanged;
 
 private:
     void timerCallback() override;

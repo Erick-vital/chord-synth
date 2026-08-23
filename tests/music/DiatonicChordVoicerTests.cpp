@@ -178,7 +178,7 @@ TEST_CASE("DiatonicChordVoicer applies inversions correctly", "[music][voicer]")
 TEST_CASE("DiatonicChordVoicer applies open voicing style", "[music][voicer]") {
     DiatonicChordVoicer voicer;
 
-    // C major open (triad): root C3 (48), 5th G3 (55), 3rd raised E4 (64) -> [48, 55, 64]
+    // Open voicings honor the E3 floor, so C3/G3/E4 transposes to C4/G4/E5.
     VoicingSpec specOpenTriad{
         .extension = ChordExtension::triad,
         .inversion = 0,
@@ -188,11 +188,11 @@ TEST_CASE("DiatonicChordVoicer applies open voicing style", "[music][voicer]") {
     };
     auto cOpen = voicer.voiceChord(0, 0, specOpenTriad);
     REQUIRE(cOpen.notes.size() == 3);
-    REQUIRE(cOpen.notes[0] == 48);
-    REQUIRE(cOpen.notes[1] == 55);
-    REQUIRE(cOpen.notes[2] == 64);
+    REQUIRE(cOpen.notes[0] == 60);
+    REQUIRE(cOpen.notes[1] == 67);
+    REQUIRE(cOpen.notes[2] == 76);
 
-    // Cmaj7 open (seventh): root C3 (48), 5th G3 (55), 7th B3 (59), 3rd raised E4 (64) -> [48, 55, 59, 64] (drop-2)
+    // The open seventh is likewise transposed as a unit to honor the E3 floor.
     VoicingSpec specOpen7th{
         .extension = ChordExtension::seventh,
         .inversion = 0,
@@ -202,10 +202,10 @@ TEST_CASE("DiatonicChordVoicer applies open voicing style", "[music][voicer]") {
     };
     auto c7Open = voicer.voiceChord(0, 0, specOpen7th);
     REQUIRE(c7Open.notes.size() == 4);
-    REQUIRE(c7Open.notes[0] == 48);
-    REQUIRE(c7Open.notes[1] == 55);
-    REQUIRE(c7Open.notes[2] == 59);
-    REQUIRE(c7Open.notes[3] == 64);
+    REQUIRE(c7Open.notes[0] == 60);
+    REQUIRE(c7Open.notes[1] == 67);
+    REQUIRE(c7Open.notes[2] == 71);
+    REQUIRE(c7Open.notes[3] == 76);
 }
 
 TEST_CASE("DiatonicChordVoicer applies custom QualityRule (free mode override)", "[music][voicer]") {
@@ -341,7 +341,8 @@ TEST_CASE("DiatonicChordVoicer enforces safe register constraints across shapes,
 
                         // Rootless / open floor: MIDI >= 52 (E3) for non-bass tones
                         // (in rootless for 7th-or-higher, tones are non-bass harmonic tones and must stay >= 52)
-                        if (style == VoicingStyle::rootless && shape != ChordShape::triad && shape != ChordShape::sus2 && shape != ChordShape::sus4) {
+                        if (style == VoicingStyle::open ||
+                            (style == VoicingStyle::rootless && shape != ChordShape::triad && shape != ChordShape::sus2 && shape != ChordShape::sus4)) {
                             for (int i = 0; i < notes.size(); ++i) {
                                 REQUIRE(notes[i] >= ChordVoicingEngine::rootlessOpenFloor);
                             }

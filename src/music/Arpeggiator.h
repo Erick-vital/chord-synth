@@ -35,7 +35,7 @@ enum class ArpMode {
 // Realtime-safe Arpeggiator emitting MIDI events boundedly based on tempo and input notes.
 class Arpeggiator final {
 public:
-    void prepare(double sampleRate) noexcept;
+    void prepare(double sampleRate);
     void reset() noexcept;
 
     void setEnabled(bool isEnabled) noexcept;
@@ -75,6 +75,7 @@ private:
 
     std::vector<HeldNote> heldNotes;
     std::vector<int> patternNotes;
+    std::vector<int> sortedNotesScratch;
     size_t patternIndex{0};
 
     int sampleCounter{0};

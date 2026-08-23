@@ -102,6 +102,8 @@ juce::String PresetSerializer::toJson(const Preset& preset) {
     paramsObj->setProperty("arp_mode", preset.parameters.arpMode);
     paramsObj->setProperty("arp_rate", preset.parameters.arpRate);
     paramsObj->setProperty("arp_gate", preset.parameters.arpGate);
+    paramsObj->setProperty("performance_midi_enabled", preset.parameters.performanceMidiEnabled);
+    paramsObj->setProperty("transform_palette", preset.parameters.transformPalette);
     paramsObj->setProperty("master_gain_db", preset.parameters.masterGainDb);
 
     rootObj->setProperty("parameters", juce::var(paramsObj));
@@ -158,7 +160,7 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
         return std::nullopt;
 
     int version = rootObj->getProperty("schema_version");
-    if (version != 1 && version != 2 && version != 3)
+    if (version != 1 && version != 2 && version != 3 && version != 4)
         return std::nullopt;
 
     Preset preset;
@@ -305,6 +307,15 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
         preset.parameters.arpGate = std::clamp(val, 0.1f, 1.0f);
     }
 
+    if (paramsObj->hasProperty("performance_midi_enabled")) {
+        preset.parameters.performanceMidiEnabled = static_cast<bool>(paramsObj->getProperty("performance_midi_enabled"));
+    }
+
+    if (paramsObj->hasProperty("transform_palette")) {
+        const int val = static_cast<int>(paramsObj->getProperty("transform_palette"));
+        preset.parameters.transformPalette = std::clamp(val, 0, 2);
+    }
+
     if (paramsObj->hasProperty("master_gain_db")) {
         float val = static_cast<float>(paramsObj->getProperty("master_gain_db"));
         preset.parameters.masterGainDb = std::clamp(val, -60.0f, 12.0f);
@@ -421,7 +432,7 @@ Preset PresetSerializer::fromProcessorState(
     const state::HarmonyState& harmonyState,
     const juce::String& name) {
     Preset preset;
-    preset.schemaVersion = 3;
+    preset.schemaVersion = 4;
     preset.name = name;
     preset.harmony = harmonyState;
 
@@ -512,6 +523,14 @@ Preset PresetSerializer::fromProcessorState(
     auto* arpGateParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::arpGate));
     if (arpGateParam != nullptr)
         preset.parameters.arpGate = *arpGateParam;
+
+    auto* performanceMidiParam = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(parameters::ids::performanceMidiEnabled));
+    if (performanceMidiParam != nullptr)
+        preset.parameters.performanceMidiEnabled = *performanceMidiParam;
+
+    auto* transformPaletteParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::transformPalette));
+    if (transformPaletteParam != nullptr)
+        preset.parameters.transformPalette = transformPaletteParam->getIndex();
 
     return preset;
 }
@@ -604,6 +623,14 @@ bool PresetSerializer::applyToAPVTS(const Preset& preset, parameters::AudioProce
     auto* arpGateParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(parameters::ids::arpGate));
     if (arpGateParam != nullptr)
         *arpGateParam = preset.parameters.arpGate;
+
+    auto* performanceMidiParam = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(parameters::ids::performanceMidiEnabled));
+    if (performanceMidiParam != nullptr)
+        *performanceMidiParam = preset.parameters.performanceMidiEnabled;
+
+    auto* transformPaletteParam = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(parameters::ids::transformPalette));
+    if (transformPaletteParam != nullptr)
+        *transformPaletteParam = preset.parameters.transformPalette;
 
     return true;
 }

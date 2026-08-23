@@ -1,8 +1,19 @@
 #include "UiMidiQueue.h"
 
 namespace chordsynth::dsp {
+namespace {
+
+bool isRealtimeSafeMidiMessage(const juce::MidiMessage& message) noexcept
+{
+    return !message.isSysEx() && message.getRawDataSize() <= 3;
+}
+
+} // namespace
 
 bool UiMidiQueue::push(const juce::MidiMessage& message) noexcept {
+    if (!isRealtimeSafeMidiMessage(message)) {
+        return false;
+    }
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
     fifo.prepareToWrite(1, start1, size1, start2, size2);
 
@@ -25,6 +36,11 @@ bool UiMidiQueue::tryPushBatch(std::span<const juce::MidiMessage> messages) noex
     if (count <= 0) {
         return true;
     }
+    for (const auto& message : messages) {
+        if (!isRealtimeSafeMidiMessage(message)) {
+            return false;
+        }
+    }
 
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
     fifo.prepareToWrite(count, start1, size1, start2, size2);
@@ -46,23 +62,23 @@ bool UiMidiQueue::tryPushBatch(std::span<const juce::MidiMessage> messages) noex
 }
 
 void UiMidiQueue::drainTo(juce::MidiBuffer& destination, int sampleOffset) noexcept {
-    const int numReady = fifo.getNumReady();
-    if (numReady <= 0) {
-        return;
+    juce::MidiMessage message;
+    while (tryPop(message)) {
+        destination.addEvent(message, sampleOffset);
     }
+}
 
+bool UiMidiQueue::tryPop(juce::MidiMessage& destination) noexcept {
     int start1 = 0, size1 = 0, start2 = 0, size2 = 0;
-    fifo.prepareToRead(numReady, start1, size1, start2, size2);
-
-    for (int i = 0; i < size1; ++i) {
-        destination.addEvent(events[static_cast<size_t>(start1 + i)], sampleOffset);
+    fifo.prepareToRead(1, start1, size1, start2, size2);
+    if (size1 + size2 == 0) {
+        return false;
     }
 
-    for (int i = 0; i < size2; ++i) {
-        destination.addEvent(events[static_cast<size_t>(start2 + i)], sampleOffset);
-    }
-
-    fifo.finishedRead(size1 + size2);
+    destination = size1 > 0 ? events[static_cast<size_t>(start1)]
+                            : events[static_cast<size_t>(start2)];
+    fifo.finishedRead(1);
+    return true;
 }
 
 } // namespace chordsynth::dsp

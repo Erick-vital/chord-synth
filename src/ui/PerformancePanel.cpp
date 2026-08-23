@@ -14,10 +14,10 @@ const char* degreeRomanLabel(music::Scale scale, int degree)
     return (scale == music::Scale::naturalMinor ? naturalMinor : major)[static_cast<std::size_t>(degree)];
 }
 constexpr std::array<const char*, 4> sceneLabels{
-    "1  A \xc2\xb7 Triadas",
+    "1  A \xc2\xb7 Diat\xc3\xb3nica",
     "2  B \xc2\xb7 S\xc3\xa9ptimas",
-    "3  C \xc2\xb7 Abierto",
-    "4  D \xc2\xb7 Inversiones"
+    "3  C \xc2\xb7 Lo\xe2\x80\x91" "Fi Warm",
+    "4  D \xc2\xb7 Jazz Tension"
 };
 
 music::VoicingSpec resolvedSpec(
@@ -61,9 +61,14 @@ PerformancePanel::PerformancePanel(
     addAndMakeVisible(nowNotesLabel);
 
     // Live revoice toggle
+    liveRevoiceToggle.setComponentID("live-revoice-toggle");
     liveRevoiceToggle.setToggleState(performanceController.getLiveRevoice(), juce::dontSendNotification);
     liveRevoiceToggle.onClick = [this]() {
-        performanceController.setLiveRevoice(liveRevoiceToggle.getToggleState());
+        const bool enabled = liveRevoiceToggle.getToggleState();
+        performanceController.setLiveRevoice(enabled);
+        if (onLiveRevoiceChanged) {
+            onLiveRevoiceChanged(enabled);
+        }
     };
     addAndMakeVisible(liveRevoiceToggle);
 
@@ -143,6 +148,12 @@ void PerformancePanel::setHeldChordDisplay(const juce::String& chordName, const 
 {
     nowChordLabel.setText(chordName, juce::dontSendNotification);
     nowNotesLabel.setText(notes, juce::dontSendNotification);
+}
+
+void PerformancePanel::setLiveRevoice(bool enabled)
+{
+    liveRevoiceToggle.setToggleState(enabled, juce::dontSendNotification);
+    performanceController.setLiveRevoice(enabled);
 }
 
 void PerformancePanel::selectDegree(int degreeIndex)

@@ -6,12 +6,14 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include "music/HarmonyConfiguration.h"
 #include "music/DiatonicChordVoicer.h"
+#include "music/VoiceLeadingResolver.h"
 #include "interaction/ChordTransform.h"
 
 namespace chordsynth::interaction {
 
 class MidiPerformanceMapper {
 public:
+    static constexpr std::size_t realtimeMidiBufferBytes = 64 * 1024;
     static constexpr int minDegreeNote = 36; // C2 -> degree 0 (I)
     static constexpr int maxDegreeNote = 42; // F#2 -> degree 6 (VII)
     static constexpr int minTransformCC = 20;
@@ -27,7 +29,7 @@ public:
 
     MidiPerformanceMapper(
         const music::HarmonyConfiguration& harmonyConfig,
-        const music::DiatonicChordVoicer& chordVoicer) noexcept;
+        const music::DiatonicChordVoicer& chordVoicer);
 
     ~MidiPerformanceMapper() = default;
 
@@ -51,6 +53,7 @@ public:
     [[nodiscard]] bool hasActiveChord() const noexcept { return activeDegree.has_value(); }
     [[nodiscard]] std::optional<int> getActiveDegree() const noexcept { return activeDegree; }
     [[nodiscard]] std::optional<TransformSlot> getActiveTransformSlot() const noexcept { return activeTransformSlot; }
+    [[nodiscard]] const music::NoteSet& getActiveHarmonicNotes() const noexcept { return activeHarmonicNotes; }
 
 private:
     void handleDegreeNoteOn(int degree, float velocity, int sampleOffset, juce::MidiBuffer& outputMidi) noexcept;
@@ -59,13 +62,13 @@ private:
     void emitAllMappedNotesOff(int sampleOffset, juce::MidiBuffer& outputMidi) noexcept;
 
     void sendDifferentialVoicing(
-        const music::VoicedChord& newVoiced,
+        const music::RealtimeVoicedChord& newVoiced,
         float velocity,
         int sampleOffset,
         juce::MidiBuffer& outputMidi) noexcept;
 
     [[nodiscard]] music::VoicingSpec getEffectiveBaseSpec(int sceneIndex, int degreeIndex) const noexcept;
-    [[nodiscard]] music::VoicedChord computeCurrentVoicing(int degree) const noexcept;
+    [[nodiscard]] music::RealtimeVoicedChord computeCurrentVoicing(int degree) const noexcept;
 
     const music::HarmonyConfiguration& config;
     const music::DiatonicChordVoicer& voicer;
@@ -77,6 +80,10 @@ private:
     std::optional<int> activeDegree{std::nullopt};
     std::optional<TransformSlot> activeTransformSlot{std::nullopt};
     float activeVelocity{0.8f};
+    std::array<std::uint8_t, 7> heldDegreeCounts{};
+    std::array<std::uint64_t, 7> degreePressOrder{};
+    std::array<float, 7> degreeVelocities{0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f};
+    std::uint64_t nextPressOrder{1};
 
     // Currently sounding mapped notes
     music::NoteSet activeHarmonicNotes{};

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "interaction/ChordPerformanceController.h"
+#include "music/VoiceLeadingResolver.h"
 #include <vector>
 
 using namespace chordsynth;
@@ -139,6 +140,35 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         // Repeating press on 0 while already active
         REQUIRE(controller.pressDegree(0, 0.8f));
         REQUIRE(output.pushedMessages.empty());
+    }
+
+    SECTION("Nearest voice leading resolves the next degree from the sounding notes") {
+        controller.setScene(1); // nearest by factory contract
+        REQUIRE(controller.pressDegree(6, 0.8f));
+        const auto previousNotes = controller.getActiveChord()->notes;
+        output.pushedMessages.clear();
+
+        const auto targetSpec = config.getSpec(1, 0);
+        const auto defaultTarget = voicer.voiceChord(0, 0, targetSpec, music::Scale::major).notes;
+        const auto nearestTarget = music::VoiceLeadingResolver::resolveNearestVoiceLeading(previousNotes, defaultTarget);
+        REQUIRE(nearestTarget != defaultTarget);
+
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        REQUIRE(controller.getActiveChord()->notes == nearestTarget);
+    }
+
+    SECTION("Failed release retains ownership so note-offs can be retried") {
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        output.pushedMessages.clear();
+        output.failPushes = true;
+
+        controller.releaseActiveChord();
+        REQUIRE(controller.getActiveChord().has_value());
+
+        output.failPushes = false;
+        controller.releaseActiveChord();
+        REQUIRE_FALSE(controller.getActiveChord().has_value());
+        REQUIRE(output.pushedMessages.size() == 3);
     }
 
     SECTION("Scene change with liveRevoice=false leaves held chord intact") {

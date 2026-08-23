@@ -207,7 +207,13 @@ std::string resolveChordLabel(
             break;
 
         case ChordShape::sus4:
-            label += "sus4";
+            if (recipe.seventh == SeventhKind::major) {
+                label += "maj7sus4";
+            } else if (recipe.seventh != SeventhKind::none) {
+                label += "7sus4";
+            } else {
+                label += "sus4";
+            }
             break;
     }
 

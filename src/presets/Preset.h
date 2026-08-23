@@ -33,11 +33,13 @@ struct PresetParameters {
     int arpMode{0}; // 0 = Up, 1 = Down, 2 = Up/Down, 3 = Random
     int arpRate{1}; // 0 = 1/4, 1 = 1/8, 2 = 1/16
     float arpGate{0.8f};
+    bool performanceMidiEnabled{false};
+    int transformPalette{1}; // 0 = Basic, 1 = Lo-Fi, 2 = Spice
     float masterGainDb{-12.0f};
 };
 
 struct Preset {
-    int schemaVersion{3};
+    int schemaVersion{4};
     juce::String name{"Default"};
     PresetParameters parameters;
     state::HarmonyState harmony;

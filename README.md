@@ -16,7 +16,7 @@ En lugar de construir cada acorde nota por nota, ChordSynth presenta siete grado
 - **Bajo y arpegiador separados:** armonía en canal interno 1 y bajo en canal 2; el arpegiador no arpegia el bajo.
 - **Síntesis polifónica:** 16 voces estéreo, envolventes anti-click, osciladores Sine/Saw/Square/Triangle, detune y filtro low-pass resonante.
 - **Arpegiador y efectos:** Up/Down/Up-Down/Random, chorus, delay libre o sincronizado y reverb.
-- **Presets y estado persistente:** HarmonyState v2 y presets JSON schema 3 con migración compatible de versiones anteriores.
+- **Presets y estado persistente:** HarmonyState v2 y presets JSON schema 4 con migración compatible de versiones anteriores.
 - **Standalone y VST3:** un mismo motor en ambos formatos.
 
 ## Uso rápido
@@ -83,6 +83,23 @@ Artefactos esperados:
 - VST3: `out/build/windows-msvc-release/ChordSynth_artefacts/Release/VST3/ChordSynth.vst3`
 
 Copia el VST3 a `C:\Program Files\Common Files\VST3\` y vuelve a escanear plugins en el DAW. Consulta [la guía Windows](docs/build-windows.md) para más detalle.
+
+## Validación GUI en Linux
+
+Linux se usa como gate de compilación y smoke del artefacto, no como sustituto de la validación manual en Windows/FL Studio. Para compilar los formatos GUI se requieren las cabeceras X11/GTK además de ALSA, OpenGL y fuentes:
+
+```bash
+sudo apt-get update && sudo apt-get install -y \
+  pkg-config libasound2-dev libcurl4-openssl-dev libfontconfig1-dev \
+  libfreetype6-dev libgl1-mesa-dev libjack-jackd2-dev libx11-dev \
+  libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev \
+  libxi-dev libgtk-3-dev
+cmake --preset linux-ninja-plugin-debug
+cmake --build --preset linux-plugin-debug --target ChordSynth_Standalone ChordSynth_VST3 ChordSynthGuiSmokeTests --parallel
+ctest --test-dir build/linux-ninja-plugin-debug --output-on-failure
+```
+
+Los artefactos Debug quedan bajo `build/linux-ninja-plugin-debug/ChordSynth_artefacts/Debug/`. Si no hay una sesión gráfica, ejecuta el smoke GUI con `xvfb-run -a`; este smoke no valida audio/MIDI físico.
 
 ## Arquitectura
 

@@ -27,7 +27,12 @@ NoteSet ChordVoicingEngine::applyVoicing(
     // 1. Work on a local copy of candidates
     VoicingCandidateTable workingCandidates = candidates;
 
-    const bool isTriad = (activeShape == ChordShape::triad || activeShape == ChordShape::sus2 || activeShape == ChordShape::sus4);
+    const bool isSuspendedSeventh =
+        (activeShape == ChordShape::sus2 || activeShape == ChordShape::sus4) &&
+        recipe.seventh != SeventhKind::none;
+    const bool isTriad =
+        (activeShape == ChordShape::triad || activeShape == ChordShape::sus2 || activeShape == ChordShape::sus4) &&
+        !isSuspendedSeventh;
     const bool isLegacySeventh = (spec.shape == ChordShape::triad && spec.extension == ChordExtension::seventh);
     const bool isSeventhOrHigher = !isTriad || isLegacySeventh;
 
@@ -128,7 +133,8 @@ NoteSet ChordVoicingEngine::applyVoicing(
         if (noteCount >= 5) {
             targetFloor = denseChordFloor; // 48
         }
-        if (spec.style == VoicingStyle::rootless && isSeventhOrHigher) {
+        if (spec.style == VoicingStyle::open ||
+            (spec.style == VoicingStyle::rootless && isSeventhOrHigher)) {
             targetFloor = std::max(targetFloor, rootlessOpenFloor); // 52
         }
 
@@ -162,7 +168,8 @@ NoteSet ChordVoicingEngine::applyVoicing(
             }
             if (fallbackCount > 0) {
                 int compactFloor = (fallbackCount >= 5) ? denseChordFloor : 0;
-                if (spec.style == VoicingStyle::rootless && isSeventhOrHigher) {
+                if (spec.style == VoicingStyle::open ||
+                    (spec.style == VoicingStyle::rootless && isSeventhOrHigher)) {
                     compactFloor = std::max(compactFloor, rootlessOpenFloor);
                 }
                 while (fallbackNotes[0] < compactFloor && fallbackNotes[static_cast<std::size_t>(fallbackCount - 1)] + 12 <= 127) {

@@ -2,8 +2,11 @@
 
 namespace chordsynth::music {
 
-void Arpeggiator::prepare(double sampleRate) noexcept
+void Arpeggiator::prepare(double sampleRate)
 {
+    heldNotes.reserve(128);
+    patternNotes.reserve(254);
+    sortedNotesScratch.reserve(128);
     clock.prepare(sampleRate);
     reset();
 }
@@ -89,8 +92,8 @@ void Arpeggiator::updatePattern() noexcept
         return;
     }
 
-    std::vector<int> sorted;
-    sorted.reserve(heldNotes.size());
+    auto& sorted = sortedNotesScratch;
+    sorted.clear();
     for (const auto& hn : heldNotes) {
         sorted.push_back(hn.noteNumber);
     }

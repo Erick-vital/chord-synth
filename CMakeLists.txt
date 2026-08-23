@@ -55,6 +55,38 @@ target_compile_definitions(chordsynth_juce_headless_test_only PUBLIC
 
 target_compile_features(chordsynth_juce_headless_test_only PUBLIC cxx_std_20)
 
+# Static production libraries need the same JUCE headers and plugin macros while
+# compiling, but must not link the test-only JUCE implementation into a real
+# JUCE plugin. The test executable links that implementation explicitly.
+add_library(chordsynth_juce_headless_headers INTERFACE)
+target_include_directories(chordsynth_juce_headless_headers INTERFACE
+    ${JUCE_MODULES_DIR})
+target_compile_definitions(chordsynth_juce_headless_headers INTERFACE
+    CHORDSYNTH_HEADLESS_APVTS_TEST_ONLY=1
+    JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
+    JUCE_STANDALONE_APPLICATION=0
+    DONT_SET_USING_JUCE_NAMESPACE=1
+    JUCE_USE_CURL=0
+    JUCE_WEB_BROWSER=0
+    JUCE_LOAD_CURL_SYMBOLS_LAZILY=1
+    JUCE_INCLUDE_ZLIB_CODE=1
+    JUCE_USE_FLAC=0
+    JUCE_DISABLE_CAUTIOUS_PARAMETER_ID_CHECKING=1
+    JUCE_HEADLESS_PLUGIN_CLIENT=1
+    JucePlugin_Name="ChordSynth"
+    JucePlugin_Desc="Diatonic Chord Synthesizer"
+    JucePlugin_Manufacturer="ErickEsc"
+    JucePlugin_ManufacturerCode=0x45657363
+    JucePlugin_PluginCode=0x43687331
+    JucePlugin_IsSynth=1
+    JucePlugin_WantsMidiInput=1
+    JucePlugin_ProducesMidiOutput=0
+    JucePlugin_IsMidiEffect=0
+    JucePlugin_EditorRequiresKeyboardFocus=1
+    JucePlugin_Version="0.1.0"
+    JucePlugin_VersionCode=0x100
+    JucePlugin_VersionString="0.1.0")
+
 # Music Theory Pure Library (independiente de JUCE y de hosts)
 add_library(chordsynth_music STATIC
     src/music/Arpeggiator.h
@@ -81,7 +113,7 @@ target_include_directories(chordsynth_music PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_link_libraries(chordsynth_music PRIVATE
-    chordsynth_juce_headless_test_only)
+    chordsynth_juce_headless_headers)
 
 target_compile_features(chordsynth_music PUBLIC cxx_std_20)
 
@@ -96,7 +128,7 @@ target_include_directories(chordsynth_state PUBLIC
 target_link_libraries(chordsynth_state PUBLIC
     chordsynth_music
     PRIVATE
-    chordsynth_juce_headless_test_only)
+    chordsynth_juce_headless_headers)
 
 target_compile_features(chordsynth_state PUBLIC cxx_std_20)
 
@@ -116,7 +148,7 @@ target_link_libraries(chordsynth_interaction PUBLIC
     chordsynth_music
     chordsynth_dsp
     PRIVATE
-    chordsynth_juce_headless_test_only)
+    chordsynth_juce_headless_headers)
 
 target_compile_features(chordsynth_interaction PUBLIC cxx_std_20)
 
@@ -144,7 +176,7 @@ target_include_directories(chordsynth_dsp PUBLIC
 target_link_libraries(chordsynth_dsp PUBLIC
     chordsynth_music
     PRIVATE
-    chordsynth_juce_headless_test_only)
+    chordsynth_juce_headless_headers)
 
 target_compile_features(chordsynth_dsp PUBLIC cxx_std_20)
 
@@ -158,7 +190,7 @@ target_include_directories(chordsynth_parameters PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_link_libraries(chordsynth_parameters PRIVATE
-    chordsynth_juce_headless_test_only)
+    chordsynth_juce_headless_headers)
 
 target_compile_features(chordsynth_parameters PUBLIC cxx_std_20)
 
@@ -175,7 +207,7 @@ target_link_libraries(chordsynth_presets PUBLIC
     chordsynth_parameters
     chordsynth_state
     PRIVATE
-    chordsynth_juce_headless_test_only)
+    chordsynth_juce_headless_headers)
 
 target_compile_features(chordsynth_presets PUBLIC cxx_std_20)
 
@@ -195,15 +227,45 @@ target_link_libraries(chordsynth_plugin PUBLIC
     chordsynth_interaction
     chordsynth_state
     PRIVATE
-    chordsynth_juce_headless_test_only)
+    chordsynth_juce_headless_headers)
 
 target_compile_features(chordsynth_plugin PUBLIC cxx_std_20)
 
 # Full JUCE Plugin / Standalone Target (Windows / Hosts)
 option(CHORDSYNTH_BUILD_PLUGIN "Build Standalone and VST3 plugin targets" OFF)
 
+# When production static libraries are compiled in Debug, the headless JUCE
+# implementation used by ChordSynthTests must use the same JUCE layout macros.
+# Keep this scoped to plugin builds so the headless-only preset retains its
+# existing, internally consistent configuration.
+if(CHORDSYNTH_BUILD_PLUGIN)
+    target_compile_definitions(chordsynth_juce_headless_test_only PUBLIC
+        "$<$<CONFIG:Debug>:DEBUG=1>"
+        "$<$<CONFIG:Debug>:_DEBUG=1>")
+endif()
+
 if(CHORDSYNTH_BUILD_PLUGIN)
     add_subdirectory(external/JUCE)
+
+    # These reusable static libraries become part of the VST3 shared object.
+    # Match JUCE's configuration macros and compile them as PIC so their object
+    # files are ABI-compatible with the generated plugin client.
+    foreach(chordsynth_production_static_target IN ITEMS
+            chordsynth_dsp
+            chordsynth_music
+            chordsynth_interaction
+            chordsynth_state
+            chordsynth_parameters
+            chordsynth_presets
+            chordsynth_plugin)
+        set_target_properties(${chordsynth_production_static_target} PROPERTIES
+            POSITION_INDEPENDENT_CODE ON)
+        target_compile_definitions(${chordsynth_production_static_target} PRIVATE
+            "$<$<CONFIG:Debug>:DEBUG=1>"
+            "$<$<CONFIG:Debug>:_DEBUG=1>")
+        target_link_libraries(${chordsynth_production_static_target} PRIVATE
+            juce::juce_recommended_config_flags)
+    endforeach()
 
     juce_add_plugin(ChordSynth
         COMPANY_NAME "ErickEsc"

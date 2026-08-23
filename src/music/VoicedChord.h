@@ -116,4 +116,11 @@ struct VoicedChord {
     std::string label{};
 };
 
+struct RealtimeVoicedChord {
+    int degree{0};
+    int rootMidi{0};
+    NoteSet notes{};
+    std::optional<int> bassMidi{};
+};
+
 } // namespace chordsynth::music
