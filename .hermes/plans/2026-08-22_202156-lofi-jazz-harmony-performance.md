@@ -340,7 +340,7 @@ The recipe resolver adapts labels/qualities to major or natural minor; scene def
 
 **TDD:** assert all 28 defaults field-by-field, reset-degree/reset-all behavior, and representative C-major labels/notes. Commit `feat: add musical harmony factory scenes`.
 
-### Task 11: Version HarmonyState and migrate legacy scene data
+### Task 11: Version HarmonyState and migrate legacy scene data · [COMPLETED]
 
 **Objective:** Persist every new field while loading version-1 sessions exactly as they sounded before.
 

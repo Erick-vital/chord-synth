@@ -7,7 +7,7 @@
 namespace chordsynth::state {
 
 inline constexpr auto stateTag = "HarmonyState";
-inline constexpr int currentVersion = 1;
+inline constexpr int currentVersion = 2;
 
 class HarmonyState {
 public:
@@ -40,6 +40,8 @@ public:
         qualityRule = music::QualityRule::diatonic;
         configuration.resetAll();
     }
+
+    void resetToLegacyDefaults() noexcept;
 
     [[nodiscard]] juce::ValueTree toValueTree() const;
     bool loadFromValueTree(const juce::ValueTree& vt) noexcept;
