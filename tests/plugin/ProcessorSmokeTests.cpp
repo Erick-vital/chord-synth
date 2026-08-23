@@ -551,11 +551,11 @@ TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip 
         sourceProcessor.getHarmonyState().setLiveRevoice(true);
         sourceProcessor.getHarmonyState().setQualityRule(music::QualityRule::minor);
         music::VoicingSpec customSpec{
-            music::ChordExtension::seventh,
-            1,
-            music::VoicingStyle::open,
-            4,
-            music::QualityRule::major
+            .extension = music::ChordExtension::seventh,
+            .inversion = 1,
+            .style = music::VoicingStyle::open,
+            .baseOctave = 4,
+            .qualityRule = music::QualityRule::major
         };
         sourceProcessor.getHarmonyState().getConfiguration().setSpec(2, 3, customSpec); // Scene 2, IV
 
@@ -596,7 +596,11 @@ TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip 
         targetProcessor.getHarmonyState().setLiveRevoice(true);
         targetProcessor.getHarmonyState().setQualityRule(music::QualityRule::diminished);
         music::VoicingSpec nonDefaultSpec{
-            music::ChordExtension::seventh, 2, music::VoicingStyle::open, 2, music::QualityRule::minor
+            .extension = music::ChordExtension::seventh,
+            .inversion = 2,
+            .style = music::VoicingStyle::open,
+            .baseOctave = 2,
+            .qualityRule = music::QualityRule::minor
         };
         targetProcessor.getHarmonyState().getConfiguration().setSpec(3, 0, nonDefaultSpec);
 

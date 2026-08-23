@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <string>
+#include "ChordRecipe.h"
 
 namespace chordsynth::music {
 
@@ -76,10 +77,11 @@ enum class VoicingStyle : std::uint8_t {
 };
 
 enum class QualityRule : std::uint8_t {
-    diatonic,
-    major,
-    minor,
-    diminished
+    diatonic = 0,
+    major = 1,
+    minor = 2,
+    diminished = 3,
+    dominant = 4
 };
 
 enum class Scale : std::uint8_t {
@@ -88,9 +90,14 @@ enum class Scale : std::uint8_t {
 };
 
 struct VoicingSpec {
+    ChordShape shape{ChordShape::triad};
     ChordExtension extension{ChordExtension::triad};
     int inversion{0};
     VoicingStyle style{VoicingStyle::close};
+    FifthPolicy fifthPolicy{FifthPolicy::automatic};
+    BassMode bassMode{BassMode::none};
+    int slashDegree{0};
+    VoiceLeadingMode voiceLeading{VoiceLeadingMode::manual};
     int baseOctave{3};
     QualityRule qualityRule{QualityRule::diatonic};
 

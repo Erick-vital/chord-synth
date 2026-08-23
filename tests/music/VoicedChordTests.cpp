@@ -47,11 +47,11 @@ TEST_CASE("VoicingSpec defines contracts with expected defaults", "[music][voici
     REQUIRE(spec.qualityRule == QualityRule::diatonic);
 
     VoicingSpec customSpec{
-        ChordExtension::seventh,
-        1,
-        VoicingStyle::open,
-        4,
-        QualityRule::major
+        .extension = ChordExtension::seventh,
+        .inversion = 1,
+        .style = VoicingStyle::open,
+        .baseOctave = 4,
+        .qualityRule = QualityRule::major
     };
     REQUIRE(customSpec.extension == ChordExtension::seventh);
     REQUIRE(customSpec.inversion == 1);

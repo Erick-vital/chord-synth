@@ -60,6 +60,8 @@ add_library(chordsynth_music STATIC
     src/music/Arpeggiator.h
     src/music/Arpeggiator.cpp
     src/music/Chord.h
+    src/music/ChordRecipe.h
+    src/music/ChordRecipe.cpp
     src/music/DiatonicChordVoicer.h
     src/music/DiatonicChordVoicer.cpp
     src/music/HarmonyConfiguration.h

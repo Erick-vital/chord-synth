@@ -31,11 +31,11 @@ TEST_CASE("HarmonyState ValueTree serialization and round-trip", "[state][harmon
         original.setQualityRule(QualityRule::major);
 
         VoicingSpec customSpec{
-            ChordExtension::seventh,
-            2,
-            VoicingStyle::open,
-            4,
-            QualityRule::minor
+            .extension = ChordExtension::seventh,
+            .inversion = 2,
+            .style = VoicingStyle::open,
+            .baseOctave = 4,
+            .qualityRule = QualityRule::minor
         };
         original.getConfiguration().setSpec(2, 1, customSpec); // Scene 2, Degree 1 (ii)
 
