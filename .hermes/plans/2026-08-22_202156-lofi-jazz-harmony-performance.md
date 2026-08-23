@@ -320,7 +320,7 @@ Use MIDI channel 2 for bass and channel 1 for harmonic notes. Commit `feat: rout
 
 ## Phase 2 — Scenes and durable state
 
-### Task 10: Define the four musical factory scenes
+### Task 10: Define the four musical factory scenes · [COMPLETED]
 
 **Objective:** Make scenes product-level musical presets rather than generic technical examples.
 
