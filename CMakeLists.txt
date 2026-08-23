@@ -73,6 +73,8 @@ add_library(chordsynth_music STATIC
     src/music/MusicalClock.h
     src/music/NoteMath.h
     src/music/NoteMath.cpp
+    src/music/VoiceLeadingResolver.h
+    src/music/VoiceLeadingResolver.cpp
     src/music/VoicedChord.h)
 
 target_include_directories(chordsynth_music PUBLIC
