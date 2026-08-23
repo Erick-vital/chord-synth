@@ -450,7 +450,7 @@ If `6` or minor-major cannot be represented by the accepted v1 recipe set, eithe
 
 **TDD:** all 24 palette slots return deterministic, valid specs; source spec remains unchanged; diatonic/free semantics are explicit; transformed labels match resulting chord identities. Commit `feat: add performance chord color palettes`.
 
-### Task 15: Add temporary transform lifecycle to the controller
+### Task 15: Add temporary transform lifecycle to the controller (Completed)
 
 **Objective:** Apply/release transformations to a held chord without mutating saved scene configuration.
 

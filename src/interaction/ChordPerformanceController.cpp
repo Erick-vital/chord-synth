@@ -15,7 +15,25 @@ ChordPerformanceController::~ChordPerformanceController() {
 }
 
 void ChordPerformanceController::setTonic(int newTonic) noexcept {
-    tonic = ((newTonic % 12) + 12) % 12;
+    const int normalizedTonic = ((newTonic % 12) + 12) % 12;
+    if (tonic != normalizedTonic) {
+        endTransform();
+        tonic = normalizedTonic;
+    }
+}
+
+void ChordPerformanceController::setScale(music::Scale newScale) noexcept {
+    if (scale != newScale) {
+        endTransform();
+        scale = newScale;
+    }
+}
+
+void ChordPerformanceController::setDiatonicMode(bool enabled) noexcept {
+    if (diatonicMode != enabled) {
+        endTransform();
+        diatonicMode = enabled;
+    }
 }
 
 void ChordPerformanceController::setScene(int newSceneIndex) noexcept {
@@ -27,6 +45,8 @@ void ChordPerformanceController::setScene(int newSceneIndex) noexcept {
         return;
     }
 
+    endTransform();
+
     if (liveRevoice && activeChord.has_value()) {
         applyLiveRevoicing(newSceneIndex);
     }
@@ -34,28 +54,28 @@ void ChordPerformanceController::setScene(int newSceneIndex) noexcept {
     currentScene = newSceneIndex;
 }
 
-void ChordPerformanceController::applyLiveRevoicing(int targetScene) noexcept {
-    if (!activeChord.has_value()) {
-        return;
-    }
-
-    const int degree = activeChord->degree;
-    auto spec = config.getSpec(targetScene, degree);
+music::VoicingSpec ChordPerformanceController::getEffectiveBaseSpec(int sceneIndex, int degreeIndex) const noexcept {
+    auto spec = config.getSpec(sceneIndex, degreeIndex);
     if (diatonicMode) {
         spec.qualityRule = music::QualityRule::diatonic;
     }
-    const auto voiced = voicer.voiceChord(tonic, degree, spec, scale);
+    return spec;
+}
+
+bool ChordPerformanceController::sendVoicingDifferential(const music::VoicedChord& voiced) noexcept {
+    if (!activeChord.has_value()) {
+        return false;
+    }
+
     const auto& newNoteSet = voiced.notes;
     const auto& oldNoteSet = activeChord->notes;
     const auto newBassMidi = voiced.bassMidi;
     const auto oldBassMidi = activeChord->bassMidi;
 
     if (newNoteSet == oldNoteSet && newBassMidi == oldBassMidi) {
-        return;
+        return true;
     }
 
-    // Determine removed notes and added notes
-    // Capacity for notes is at most 6 harmonic + 1 bass = 7, so max 7 off + 7 on = 14 messages
     constexpr std::size_t maxSoundingNotes = music::maxChordTones + 1; // optional bass
     constexpr std::size_t maxReplacementEvents = maxSoundingNotes * 2;
     std::array<juce::MidiMessage, maxReplacementEvents> batchMessages{};
@@ -103,11 +123,25 @@ void ChordPerformanceController::applyLiveRevoicing(int targetScene) noexcept {
 
     if (batchCount > 0) {
         std::span<const juce::MidiMessage> batch(batchMessages.data(), batchCount);
-        if (output.tryPushBatch(batch)) {
-            activeChord->notes = newNoteSet;
-            activeChord->bassMidi = newBassMidi;
+        if (!output.tryPushBatch(batch)) {
+            return false;
         }
     }
+
+    activeChord->notes = newNoteSet;
+    activeChord->bassMidi = newBassMidi;
+    return true;
+}
+
+void ChordPerformanceController::applyLiveRevoicing(int targetScene) noexcept {
+    if (!activeChord.has_value()) {
+        return;
+    }
+
+    const int degree = activeChord->degree;
+    const auto spec = getEffectiveBaseSpec(targetScene, degree);
+    const auto voiced = voicer.voiceChord(tonic, degree, spec, scale);
+    sendVoicingDifferential(voiced);
 }
 
 void ChordPerformanceController::revoiceActiveChordIfHeld(int degree) noexcept {
@@ -115,7 +149,19 @@ void ChordPerformanceController::revoiceActiveChordIfHeld(int degree) noexcept {
         return;
     }
 
-    applyLiveRevoicing(currentScene);
+    if (activeTransform.has_value()) {
+        const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
+        const auto transformResult = applyChordTransform(
+            activeTransform->palette,
+            activeTransform->slot,
+            baseSpec,
+            scale,
+            degree);
+        const auto voiced = voicer.voiceChord(tonic, degree, transformResult.spec, scale);
+        sendVoicingDifferential(voiced);
+    } else {
+        applyLiveRevoicing(currentScene);
+    }
 }
 
 bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcept {
@@ -128,10 +174,9 @@ bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcep
         return true;
     }
 
-    auto spec = config.getSpec(currentScene, degree);
-    if (diatonicMode) {
-        spec.qualityRule = music::QualityRule::diatonic;
-    }
+    activeTransform.reset();
+
+    const auto spec = getEffectiveBaseSpec(currentScene, degree);
     const auto voiced = voicer.voiceChord(tonic, degree, spec, scale);
     const auto& newNotes = voiced.notes;
 
@@ -191,6 +236,8 @@ bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcep
 }
 
 void ChordPerformanceController::releaseActiveChord() noexcept {
+    activeTransform.reset();
+
     if (!activeChord.has_value()) {
         return;
     }
@@ -226,6 +273,76 @@ void ChordPerformanceController::releaseActiveChord() noexcept {
 
 void ChordPerformanceController::allNotesOff() noexcept {
     releaseActiveChord();
+}
+
+bool ChordPerformanceController::beginTransform(TransformPalette palette, TransformSlot slot) noexcept {
+    if (!activeChord.has_value()) {
+        activeTransform = ActiveTransform{ .palette = palette, .slot = slot };
+        return true;
+    }
+
+    const int degree = activeChord->degree;
+    const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
+    const auto transformResult = applyChordTransform(palette, slot, baseSpec, scale, degree);
+    const auto voiced = voicer.voiceChord(tonic, degree, transformResult.spec, scale);
+
+    if (!sendVoicingDifferential(voiced)) {
+        return false;
+    }
+
+    activeTransform = ActiveTransform{ .palette = palette, .slot = slot };
+    return true;
+}
+
+void ChordPerformanceController::endTransform() noexcept {
+    if (!activeTransform.has_value()) {
+        return;
+    }
+
+    if (activeChord.has_value()) {
+        const int degree = activeChord->degree;
+        const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
+        const auto voiced = voicer.voiceChord(tonic, degree, baseSpec, scale);
+        sendVoicingDifferential(voiced);
+    }
+
+    activeTransform.reset();
+}
+
+std::optional<music::VoicingSpec> ChordPerformanceController::transformedSpecForActiveDegree() const noexcept {
+    if (!activeChord.has_value() || !activeTransform.has_value()) {
+        return std::nullopt;
+    }
+
+    const int degree = activeChord->degree;
+    const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
+    const auto result = applyChordTransform(
+        activeTransform->palette,
+        activeTransform->slot,
+        baseSpec,
+        scale,
+        degree);
+
+    return result.spec;
+}
+
+bool ChordPerformanceController::commitActiveTransform(music::HarmonyConfiguration& targetConfig) noexcept {
+    if (!activeChord.has_value() || !activeTransform.has_value()) {
+        return false;
+    }
+
+    const auto transformedSpec = transformedSpecForActiveDegree();
+    if (!transformedSpec.has_value()) {
+        return false;
+    }
+
+    const int degree = activeChord->degree;
+    if (!targetConfig.setSpec(currentScene, degree, *transformedSpec)) {
+        return false;
+    }
+
+    activeTransform.reset();
+    return true;
 }
 
 } // namespace chordsynth::interaction

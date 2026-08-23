@@ -418,3 +418,199 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         }
     }
 }
+
+TEST_CASE("ChordPerformanceController temporary transform lifecycle", "[interaction][controller][transform]") {
+    music::HarmonyConfiguration config;
+    music::DiatonicChordVoicer voicer;
+    MockMidiOutput output;
+
+    interaction::ChordPerformanceController controller(config, voicer, output);
+    controller.setTonic(0); // C Major
+    controller.setScene(0); // Scene A (triads)
+    controller.setLiveRevoice(false);
+
+    SECTION("beginTransform without active chord updates transform state but emits no MIDI and returns true/false according to spec") {
+        // Without active degree: transformedSpecForActiveDegree returns nullopt
+        REQUIRE_FALSE(controller.getActiveChord().has_value());
+        REQUIRE_FALSE(controller.transformedSpecForActiveDegree().has_value());
+        REQUIRE_FALSE(controller.hasActiveTransform());
+
+        // beginTransform stores visual selection without emitting notes
+        bool beginResult = controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one);
+        REQUIRE(controller.hasActiveTransform());
+        auto activeTrans = controller.getActiveTransform();
+        REQUIRE(activeTrans.has_value());
+        REQUIRE(activeTrans->first == interaction::TransformPalette::basic);
+        REQUIRE(activeTrans->second == interaction::TransformSlot::one);
+        REQUIRE(output.pushedMessages.empty());
+        REQUIRE_FALSE(controller.transformedSpecForActiveDegree().has_value());
+
+        // ending transform clears selection
+        controller.endTransform();
+        REQUIRE_FALSE(controller.hasActiveTransform());
+        REQUIRE(output.pushedMessages.empty());
+    }
+
+    SECTION("beginTransform on held chord computes transformed spec and sends differential MIDI") {
+        // Press C major triad (deg 0: C3=48, E3=52, G3=55)
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        output.pushedMessages.clear();
+
+        // Palette basic, Slot one: Major/minor flip -> C minor triad (C3=48, Eb3=51, G3=55)
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
+        REQUIRE(controller.hasActiveTransform());
+        auto transSpecOpt = controller.transformedSpecForActiveDegree();
+        REQUIRE(transSpecOpt.has_value());
+        REQUIRE(transSpecOpt->qualityRule == music::QualityRule::minor);
+
+        // Held notes should now be 48, 51, 55
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({48, 51, 55}, 3));
+
+        // Diff should be noteOff 52 (E), noteOn 51 (Eb)
+        REQUIRE(output.pushedMessages.size() == 2);
+        REQUIRE(output.pushedMessages[0].isNoteOff());
+        REQUIRE(output.pushedMessages[0].getNoteNumber() == 52);
+        REQUIRE(output.pushedMessages[1].isNoteOn());
+        REQUIRE(output.pushedMessages[1].getNoteNumber() == 51);
+
+        // Saved config in HarmonyConfiguration must NOT have mutated!
+        REQUIRE(config.getSpec(0, 0).qualityRule == music::QualityRule::diatonic);
+    }
+
+    SECTION("Switching transform slots calculates from the saved base spec, not the previous transform") {
+        // Press degree 0 (C major triad: 48, 52, 55)
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        output.pushedMessages.clear();
+
+        // 1. Transform to Minor (basic slot 1: 48, 51, 55)
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
+        output.pushedMessages.clear();
+
+        // 2. Switch to Dominant 7 (basic slot 2: C7 -> C3=48, E3=52, G3=55, Bb3=58)
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::two));
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({48, 52, 55, 58}, 4));
+
+        // Previous sounding notes were {48, 51, 55}. New notes are {48, 52, 55, 58}.
+        // Diff: NoteOff 51 (Eb), NoteOn 52 (E), NoteOn 58 (Bb)
+        REQUIRE(output.pushedMessages.size() == 3);
+        REQUIRE(output.pushedMessages[0].isNoteOff());
+        REQUIRE(output.pushedMessages[0].getNoteNumber() == 51);
+        REQUIRE(output.pushedMessages[1].isNoteOn());
+        REQUIRE(output.pushedMessages[1].getNoteNumber() == 52);
+        REQUIRE(output.pushedMessages[2].isNoteOn());
+        REQUIRE(output.pushedMessages[2].getNoteNumber() == 58);
+    }
+
+    SECTION("endTransform restores the exact saved base spec with differential events") {
+        REQUIRE(controller.pressDegree(0, 0.8f)); // 48, 52, 55
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one)); // 48, 51, 55
+        output.pushedMessages.clear();
+
+        controller.endTransform();
+        REQUIRE_FALSE(controller.hasActiveTransform());
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({48, 52, 55}, 3));
+
+        // NoteOff 51 (Eb), NoteOn 52 (E)
+        REQUIRE(output.pushedMessages.size() == 2);
+        REQUIRE(output.pushedMessages[0].isNoteOff());
+        REQUIRE(output.pushedMessages[0].getNoteNumber() == 51);
+        REQUIRE(output.pushedMessages[1].isNoteOn());
+        REQUIRE(output.pushedMessages[1].getNoteNumber() == 52);
+    }
+
+    SECTION("commitActiveTransform writes transformed spec to targetConfig and clears temporary state without reverting audio") {
+        REQUIRE(controller.pressDegree(0, 0.8f)); // 48, 52, 55
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one)); // 48, 51, 55
+        output.pushedMessages.clear();
+
+        // Target config to commit to
+        music::HarmonyConfiguration targetConfig = config;
+        REQUIRE(controller.commitActiveTransform(targetConfig));
+
+        // Transform is now cleared
+        REQUIRE_FALSE(controller.hasActiveTransform());
+        // Audio is unchanged (no new MIDI messages pushed during commit)
+        REQUIRE(output.pushedMessages.empty());
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({48, 51, 55}, 3));
+
+        // targetConfig has been updated with the minor qualityRule
+        auto savedSpec = targetConfig.getSpec(0, 0);
+        REQUIRE(savedSpec.qualityRule == music::QualityRule::minor);
+
+        // Calling commitActiveTransform when no transform is active returns false
+        REQUIRE_FALSE(controller.commitActiveTransform(targetConfig));
+    }
+
+    SECTION("commitActiveTransform returns false when no chord is active") {
+        music::HarmonyConfiguration targetConfig;
+        controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one);
+        REQUIRE_FALSE(controller.commitActiveTransform(targetConfig));
+    }
+
+    SECTION("releaseActiveChord clears transform and turns off sounding transformed notes") {
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one)); // 48, 51, 55
+        output.pushedMessages.clear();
+
+        controller.releaseActiveChord();
+        REQUIRE_FALSE(controller.getActiveChord().has_value());
+        REQUIRE_FALSE(controller.hasActiveTransform());
+
+        // Note-offs sent for currently sounding 48, 51, 55
+        REQUIRE(output.pushedMessages.size() == 3);
+        REQUIRE(output.pushedMessages[0].isNoteOff());
+        REQUIRE(output.pushedMessages[0].getNoteNumber() == 48);
+        REQUIRE(output.pushedMessages[1].isNoteOff());
+        REQUIRE(output.pushedMessages[1].getNoteNumber() == 51);
+        REQUIRE(output.pushedMessages[2].isNoteOff());
+        REQUIRE(output.pushedMessages[2].getNoteNumber() == 55);
+    }
+
+    SECTION("allNotesOff clears transform state and releases notes") {
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
+        REQUIRE(controller.hasActiveTransform());
+
+        controller.allNotesOff();
+        REQUIRE_FALSE(controller.hasActiveTransform());
+        REQUIRE_FALSE(controller.getActiveChord().has_value());
+    }
+
+    SECTION("Scene, tonic, or scale change ends active transform safely") {
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
+        REQUIRE(controller.hasActiveTransform());
+
+        // Tonic change
+        controller.setTonic(2);
+        REQUIRE_FALSE(controller.hasActiveTransform());
+
+        // Begin transform again
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
+        REQUIRE(controller.hasActiveTransform());
+
+        // Scale change
+        controller.setScale(music::Scale::naturalMinor);
+        REQUIRE_FALSE(controller.hasActiveTransform());
+
+        // Begin transform again
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
+        REQUIRE(controller.hasActiveTransform());
+
+        // Scene change
+        controller.setScene(1);
+        REQUIRE_FALSE(controller.hasActiveTransform());
+    }
+
+    SECTION("Queue failure on beginTransform preserves previously sounding state") {
+        REQUIRE(controller.pressDegree(0, 0.8f)); // 48, 52, 55
+        output.pushedMessages.clear();
+
+        output.failPushes = true;
+        REQUIRE_FALSE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
+
+        // State should still be the base chord notes and no active transform
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({48, 52, 55}, 3));
+        REQUIRE_FALSE(controller.hasActiveTransform());
+    }
+}
