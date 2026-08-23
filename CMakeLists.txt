@@ -103,7 +103,9 @@ target_compile_features(chordsynth_state PUBLIC cxx_std_20)
 # Interaction Library (Message thread controllers)
 add_library(chordsynth_interaction STATIC
     src/interaction/ChordPerformanceController.h
-    src/interaction/ChordPerformanceController.cpp)
+    src/interaction/ChordPerformanceController.cpp
+    src/interaction/ChordTransform.h
+    src/interaction/ChordTransform.cpp)
 
 target_include_directories(chordsynth_interaction PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src)

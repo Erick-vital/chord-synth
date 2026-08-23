@@ -413,7 +413,7 @@ inversion-select and register-select remain
 
 ## Phase 4 — Temporary performance palettes
 
-### Task 14: Implement pure chord transformations and palette definitions
+### Task 14: Implement pure chord transformations and palette definitions · [COMPLETED]
 
 **Objective:** Define reusable, testable transformations independent of JUCE UI and MIDI transport.
 
