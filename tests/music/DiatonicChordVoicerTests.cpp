@@ -407,6 +407,175 @@ TEST_CASE("DiatonicChordVoicer generates 9th, 11th, 13th, add9, 6/9 and suspende
     }
 }
 
+TEST_CASE("DiatonicChordVoicer applies compact, open, rootless policies and fifth omission", "[music][voicer][style]") {
+    DiatonicChordVoicer voicer;
+
+    SECTION("Cmaj9 under compact, open, rootless and fifth policies") {
+        // Cmaj9 base notes: C3 (48), E3 (52), G3 (55), B3 (59), D4 (62)
+        // compact: [48, 52, 55, 59, 62]
+        VoicingSpec specCompact{
+            .shape = ChordShape::ninth,
+            .style = VoicingStyle::compact,
+            .fifthPolicy = FifthPolicy::automatic,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto cmaj9Compact = voicer.voiceChord(0, 0, specCompact);
+        REQUIRE(cmaj9Compact.notes == NoteSet({48, 52, 55, 59, 62}, 5));
+
+        // open (drop-2 from root position [48, 52, 55, 59, 62]: 2nd from top is B3 (59) -> B2 (47) -> [47, 48, 52, 55, 62]
+        // or standard drop-2 / spread: [48, 55, 59, 62, 64] / drop 2nd highest down octave)
+        VoicingSpec specOpen{
+            .shape = ChordShape::ninth,
+            .style = VoicingStyle::open,
+            .fifthPolicy = FifthPolicy::automatic,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto cmaj9Open = voicer.voiceChord(0, 0, specOpen);
+        REQUIRE(cmaj9Open.notes.size() >= 4);
+
+        // rootless: omit root (C3=48), retain 3rd (52), 5th (55), 7th (59), 9th (62) -> [52, 55, 59, 62]
+        VoicingSpec specRootless{
+            .shape = ChordShape::ninth,
+            .style = VoicingStyle::rootless,
+            .fifthPolicy = FifthPolicy::automatic,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto cmaj9Rootless = voicer.voiceChord(0, 0, specRootless);
+        REQUIRE(cmaj9Rootless.notes == NoteSet({52, 55, 59, 62}, 4));
+
+        // rootless with fifthPolicy::omit: omit root (48) AND fifth (55) -> [52, 59, 62]
+        VoicingSpec specRootlessNo5th{
+            .shape = ChordShape::ninth,
+            .style = VoicingStyle::rootless,
+            .fifthPolicy = FifthPolicy::omit,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto cmaj9RootlessNo5 = voicer.voiceChord(0, 0, specRootlessNo5th);
+        REQUIRE(cmaj9RootlessNo5.notes == NoteSet({52, 59, 62}, 3));
+
+        // compact with fifthPolicy::omit: omit fifth (55) -> [48, 52, 59, 62]
+        VoicingSpec specCompactNo5th{
+            .shape = ChordShape::ninth,
+            .style = VoicingStyle::compact,
+            .fifthPolicy = FifthPolicy::omit,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto cmaj9CompactNo5 = voicer.voiceChord(0, 0, specCompactNo5th);
+        REQUIRE(cmaj9CompactNo5.notes == NoteSet({48, 52, 59, 62}, 4));
+    }
+
+    SECTION("Dm9 under compact, open and rootless") {
+        // Dm9: D3 (50), F3 (53), A3 (57), C4 (60), E4 (64)
+        VoicingSpec specDm9Rootless{
+            .shape = ChordShape::ninth,
+            .style = VoicingStyle::rootless,
+            .fifthPolicy = FifthPolicy::automatic,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto dm9Rootless = voicer.voiceChord(0, 1, specDm9Rootless);
+        // omit root (50) -> [53, 57, 60, 64]
+        REQUIRE(dm9Rootless.notes == NoteSet({53, 57, 60, 64}, 4));
+
+        // Dm9 with fifthPolicy::omit -> omit A3 (57) -> [50, 53, 60, 64]
+        VoicingSpec specDm9No5th{
+            .shape = ChordShape::ninth,
+            .style = VoicingStyle::compact,
+            .fifthPolicy = FifthPolicy::omit,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto dm9No5 = voicer.voiceChord(0, 1, specDm9No5th);
+        REQUIRE(dm9No5.notes == NoteSet({50, 53, 60, 64}, 4));
+    }
+
+    SECTION("G13 under compact, open, rootless and fifth policy") {
+        // G13 base: G3 (55), B3 (59), D4 (62), F4 (65), A4 (69), E5 (76) (11th omitted by 6-voice capacity)
+        VoicingSpec specG13Compact{
+            .shape = ChordShape::thirteenth,
+            .style = VoicingStyle::compact,
+            .fifthPolicy = FifthPolicy::include,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto g13Compact = voicer.voiceChord(0, 4, specG13Compact);
+        REQUIRE(g13Compact.notes == NoteSet({55, 59, 62, 65, 69, 76}, 6));
+
+        // G13 rootless: omit root G3 (55) -> B3 (59), D4 (62), F4 (65), A4 (69), E5 (76) -> 5 notes
+        VoicingSpec specG13Rootless{
+            .shape = ChordShape::thirteenth,
+            .style = VoicingStyle::rootless,
+            .fifthPolicy = FifthPolicy::automatic,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto g13Rootless = voicer.voiceChord(0, 4, specG13Rootless);
+        REQUIRE(g13Rootless.notes == NoteSet({59, 62, 65, 69, 76}, 5));
+
+        // G13 omit 5th: omit D4 (62) -> G3 (55), B3 (59), F4 (65), A4 (69), E5 (76) -> 5 notes
+        VoicingSpec specG13No5th{
+            .shape = ChordShape::thirteenth,
+            .style = VoicingStyle::compact,
+            .fifthPolicy = FifthPolicy::omit,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto g13No5 = voicer.voiceChord(0, 4, specG13No5th);
+        REQUIRE(g13No5.notes == NoteSet({55, 59, 65, 69, 76}, 5));
+    }
+
+    SECTION("Am11 under compact and rootless") {
+        // Am11 base: A3 (57), C4 (60), E4 (64), G4 (67), B4 (71), D5 (74)
+        VoicingSpec specAm11Rootless{
+            .shape = ChordShape::eleventh,
+            .style = VoicingStyle::rootless,
+            .fifthPolicy = FifthPolicy::automatic,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto am11Rootless = voicer.voiceChord(0, 5, specAm11Rootless);
+        // omit root A3 (57) -> [60, 64, 67, 71, 74]
+        REQUIRE(am11Rootless.notes == NoteSet({60, 64, 67, 71, 74}, 5));
+    }
+
+    SECTION("Triad under rootless falls back to compact") {
+        VoicingSpec specTriadRootless{
+            .shape = ChordShape::triad,
+            .style = VoicingStyle::rootless,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto triad = voicer.voiceChord(0, 0, specTriadRootless);
+        REQUIRE(triad.notes == NoteSet({48, 52, 55}, 3));
+    }
+
+    SECTION("FifthPolicy automatic behavior") {
+        // For triads/sus: Fifth is included
+        VoicingSpec specTriadAuto{
+            .shape = ChordShape::triad,
+            .fifthPolicy = FifthPolicy::automatic,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto triadAuto = voicer.voiceChord(0, 0, specTriadAuto);
+        REQUIRE(triadAuto.notes == NoteSet({48, 52, 55}, 3));
+
+        VoicingSpec specSus4Auto{
+            .shape = ChordShape::sus4,
+            .fifthPolicy = FifthPolicy::automatic,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto sus4Auto = voicer.voiceChord(0, 0, specSus4Auto);
+        REQUIRE(sus4Auto.notes == NoteSet({48, 53, 55}, 3));
+    }
+}
+
 TEST_CASE("DiatonicChordVoicer validates octave and MIDI bounds (0..127)", "[music][voicer]") {
     DiatonicChordVoicer voicer;
     VoicingSpec specOctave2{

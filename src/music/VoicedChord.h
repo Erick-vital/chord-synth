@@ -72,8 +72,10 @@ enum class ChordExtension : std::uint8_t {
 };
 
 enum class VoicingStyle : std::uint8_t {
-    close,
-    open
+    compact = 0,
+    close = 0,
+    open = 1,
+    rootless = 2
 };
 
 enum class QualityRule : std::uint8_t {

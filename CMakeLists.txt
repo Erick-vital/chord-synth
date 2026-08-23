@@ -62,6 +62,8 @@ add_library(chordsynth_music STATIC
     src/music/Chord.h
     src/music/ChordRecipe.h
     src/music/ChordRecipe.cpp
+    src/music/ChordVoicingEngine.h
+    src/music/ChordVoicingEngine.cpp
     src/music/DiatonicChordVoicer.h
     src/music/DiatonicChordVoicer.cpp
     src/music/HarmonyConfiguration.h
