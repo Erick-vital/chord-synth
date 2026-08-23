@@ -664,6 +664,102 @@ TEST_CASE("DiatonicChordVoicer applies compact, open, rootless policies and fift
     }
 }
 
+TEST_CASE("DiatonicChordVoicer handles root and slash bass generation", "[music][voicer][bass]") {
+    DiatonicChordVoicer voicer;
+
+    SECTION("BassMode::none produces std::nullopt bassMidi and standard label") {
+        VoicingSpec spec{
+            .shape = ChordShape::triad,
+            .bassMode = BassMode::none,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chord = voicer.voiceChord(0, 0, spec); // C triad
+        REQUIRE(chord.label == "C");
+        REQUIRE_FALSE(chord.bassMidi.has_value());
+    }
+
+    SECTION("BassMode::root transposes root note into bass range (24..47)") {
+        VoicingSpec spec{
+            .shape = ChordShape::seventh,
+            .bassMode = BassMode::root,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        // Degree 0 (C) -> rootMidi in oct 3 is 48. Transposed to 24..47 is 36 (C2) or 24/36/48 -> 36.
+        auto chordC = voicer.voiceChord(0, 0, spec);
+        REQUIRE(chordC.label == "Cmaj7");
+        REQUIRE(chordC.bassMidi.has_value());
+        REQUIRE(*chordC.bassMidi == 36);
+        REQUIRE(*chordC.bassMidi >= 24);
+        REQUIRE(*chordC.bassMidi <= 47);
+
+        // Degree 4 (G in C major) -> rootMidi is 55. Transposed to 24..47 is 43 (G2) or 31.
+        // 55 - 12 = 43.
+        auto chordG = voicer.voiceChord(0, 4, spec);
+        REQUIRE(chordG.label == "G7");
+        REQUIRE(chordG.bassMidi.has_value());
+        REQUIRE(*chordG.bassMidi == 43);
+    }
+
+    SECTION("BassMode::slashDegree transposes scale degree to bass range and formats slash label") {
+        VoicingSpec spec{
+            .shape = ChordShape::triad,
+            .bassMode = BassMode::slashDegree,
+            .slashDegree = 2, // Degree 2 in C major is E (scaleSemitones[2] = 4)
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        // C major triad with E in the bass -> C/E
+        auto chord = voicer.voiceChord(0, 0, spec);
+        REQUIRE(chord.label == "C/E");
+        REQUIRE(chord.bassMidi.has_value());
+        // Pitch class of E is 4. Transposed to 24..47: 28 or 40.
+        // baseMidi = 48, scaleSemitones[2] = 4 -> 52. 52 - 12 = 40.
+        REQUIRE(*chord.bassMidi == 40);
+
+        // Slash degree 6 (B in C major, pitch class 11) -> Cmaj7/B
+        VoicingSpec spec7{
+            .shape = ChordShape::seventh,
+            .bassMode = BassMode::slashDegree,
+            .slashDegree = 6,
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chord7 = voicer.voiceChord(0, 0, spec7);
+        REQUIRE(chord7.label == "Cmaj7/B");
+        REQUIRE(chord7.bassMidi.has_value());
+        // 48 + 11 = 59. 59 - 12 = 47 (B2, which is <= 47).
+        REQUIRE(*chord7.bassMidi == 47);
+    }
+
+    SECTION("BassMode::slashDegree clamps out of range slashDegree safely") {
+        VoicingSpec spec{
+            .shape = ChordShape::triad,
+            .bassMode = BassMode::slashDegree,
+            .slashDegree = 10, // clamped to 6 (B in C major)
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chord = voicer.voiceChord(0, 0, spec);
+        REQUIRE(chord.label == "C/B");
+        REQUIRE(chord.bassMidi.has_value());
+        REQUIRE(*chord.bassMidi == 47);
+
+        VoicingSpec specNeg{
+            .shape = ChordShape::triad,
+            .bassMode = BassMode::slashDegree,
+            .slashDegree = -3, // clamped to 0 (C in C major)
+            .baseOctave = 3,
+            .qualityRule = QualityRule::diatonic
+        };
+        auto chordNeg = voicer.voiceChord(0, 0, specNeg);
+        REQUIRE(chordNeg.label == "C/C");
+        REQUIRE(chordNeg.bassMidi.has_value());
+        REQUIRE(*chordNeg.bassMidi == 36);
+    }
+}
+
 TEST_CASE("DiatonicChordVoicer validates octave and MIDI bounds (0..127)", "[music][voicer]") {
     DiatonicChordVoicer voicer;
     VoicingSpec specOctave2{

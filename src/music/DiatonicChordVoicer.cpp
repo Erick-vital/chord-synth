@@ -4,6 +4,7 @@
 #include "ChordRecipe.h"
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <stdexcept>
 #include <string_view>
 
@@ -13,6 +14,9 @@ namespace {
 
 constexpr std::array<int, 7> majorScaleSemitones{0, 2, 4, 5, 7, 9, 11};
 constexpr std::array<int, 7> naturalMinorScaleSemitones{0, 2, 3, 5, 7, 8, 10};
+constexpr std::array<std::string_view, 12> pitchNames{
+    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+};
 
 } // namespace
 
@@ -127,11 +131,26 @@ VoicedChord DiatonicChordVoicer::voiceChord(
     const int rootPitchClass = ((rootMidi % 12) + 12) % 12;
     std::string label = resolveChordLabel(rootPitchClass, recipe, activeShape);
 
+    // Calculate optional bassMidi based on spec.bassMode
+    std::optional<int> bassMidi{};
+    if (spec.bassMode == BassMode::root) {
+        bassMidi = ChordVoicingEngine::transposeBassToRange(rootMidi);
+    } else if (spec.bassMode == BassMode::slashDegree) {
+        const int clampedSlashDegree = std::clamp(spec.slashDegree, 0, 6);
+        const int slashOffset = scaleSemitones[static_cast<std::size_t>(clampedSlashDegree)];
+        const int slashMidi = baseMidi + slashOffset;
+        bassMidi = ChordVoicingEngine::transposeBassToRange(slashMidi);
+
+        const int bassPitchClass = ((slashMidi % 12) + 12) % 12;
+        label += "/" + std::string(pitchNames[static_cast<std::size_t>(bassPitchClass)]);
+    }
+
     return VoicedChord{
         .degree = degree,
         .rootMidi = rootMidi,
         .spec = spec,
         .notes = voicedNotes,
+        .bassMidi = bassMidi,
         .label = std::move(label),
     };
 }

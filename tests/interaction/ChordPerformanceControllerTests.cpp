@@ -223,6 +223,131 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         REQUIRE(output.pushedMessages.empty());
     }
 
+    SECTION("Root and slash bass note handling in controller") {
+        // Configure degree 0 with BassMode::root
+        music::VoicingSpec rootBassSpec;
+        rootBassSpec.bassMode = music::BassMode::root;
+        config.setSpec(0, 0, rootBassSpec);
+
+        // Configure degree 1 with BassMode::slashDegree (degree 0 = C)
+        music::VoicingSpec slashBassSpec;
+        slashBassSpec.bassMode = music::BassMode::slashDegree;
+        slashBassSpec.slashDegree = 0;
+        config.setSpec(0, 1, slashBassSpec);
+
+        // 1. Press degree 0: should send note-ons for chord notes on channel 1 (or configured midiChannel) AND bass note on channel 2
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        REQUIRE(controller.getActiveChord().has_value());
+        REQUIRE(controller.getActiveChord()->bassMidi.has_value());
+        REQUIRE(*controller.getActiveChord()->bassMidi == 36); // C2
+
+        // Check output messages: 3 notes on ch 1 + 1 note on ch 2 = 4 messages
+        REQUIRE(output.pushedMessages.size() == 4);
+        int ch1Count = 0;
+        int ch2Count = 0;
+        for (const auto& msg : output.pushedMessages) {
+            REQUIRE(msg.isNoteOn());
+            if (msg.getChannel() == 1) {
+                ch1Count++;
+            } else if (msg.getChannel() == 2) {
+                ch2Count++;
+                REQUIRE(msg.getNoteNumber() == 36);
+            }
+        }
+        REQUIRE(ch1Count == 3);
+        REQUIRE(ch2Count == 1);
+
+        // 2. Press degree 1 while degree 0 is active:
+        // Should emit note-offs for old chord (ch1) AND old bass (ch2), then note-ons for new chord (ch1) AND new bass (ch2)
+        output.pushedMessages.clear();
+        REQUIRE(controller.pressDegree(1, 0.9f));
+        REQUIRE(controller.getActiveChord().has_value());
+        REQUIRE(controller.getActiveChord()->degree == 1);
+        REQUIRE(controller.getActiveChord()->bassMidi.has_value());
+        REQUIRE(*controller.getActiveChord()->bassMidi == 36); // Slash degree 0 in C major is C2 (36)
+
+        // Old off: 3 (ch1) + 1 (ch2) = 4 offs
+        // New on: 3 (ch1) + 1 (ch2) = 4 ons
+        // Total = 8 messages
+        REQUIRE(output.pushedMessages.size() == 8);
+        int offCh1 = 0, offCh2 = 0, onCh1 = 0, onCh2 = 0;
+        for (size_t i = 0; i < 4; ++i) {
+            REQUIRE(output.pushedMessages[i].isNoteOff());
+            if (output.pushedMessages[i].getChannel() == 1) offCh1++;
+            if (output.pushedMessages[i].getChannel() == 2) offCh2++;
+        }
+        for (size_t i = 4; i < 8; ++i) {
+            REQUIRE(output.pushedMessages[i].isNoteOn());
+            if (output.pushedMessages[i].getChannel() == 1) onCh1++;
+            if (output.pushedMessages[i].getChannel() == 2) onCh2++;
+        }
+        REQUIRE(offCh1 == 3);
+        REQUIRE(offCh2 == 1);
+        REQUIRE(onCh1 == 3);
+        REQUIRE(onCh2 == 1);
+
+        // 3. Release active chord: turns off harmonic notes on ch1 and bass on ch2
+        output.pushedMessages.clear();
+        controller.releaseActiveChord();
+        REQUIRE_FALSE(controller.getActiveChord().has_value());
+        REQUIRE(output.pushedMessages.size() == 4);
+        offCh1 = 0; offCh2 = 0;
+        for (const auto& msg : output.pushedMessages) {
+            REQUIRE(msg.isNoteOff());
+            if (msg.getChannel() == 1) offCh1++;
+            if (msg.getChannel() == 2) offCh2++;
+        }
+        REQUIRE(offCh1 == 3);
+        REQUIRE(offCh2 == 1);
+    }
+
+    SECTION("Live revoicing updates bass note independently on channel 2") {
+        controller.setLiveRevoice(true);
+        // Degree 0 starts with no bass
+        music::VoicingSpec specNoBass;
+        specNoBass.bassMode = music::BassMode::none;
+        config.setSpec(0, 0, specNoBass);
+
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        REQUIRE_FALSE(controller.getActiveChord()->bassMidi.has_value());
+        output.pushedMessages.clear();
+
+        // Mutate spec to BassMode::root
+        music::VoicingSpec specWithBass;
+        specWithBass.bassMode = music::BassMode::root;
+        config.setSpec(0, 0, specWithBass);
+
+        controller.revoiceActiveChordIfHeld(0);
+        REQUIRE(controller.getActiveChord()->bassMidi.has_value());
+        REQUIRE(*controller.getActiveChord()->bassMidi == 36);
+
+        // Harmonic notes did not change, so only 1 noteOn on channel 2 for bass should be emitted
+        REQUIRE(output.pushedMessages.size() == 1);
+        REQUIRE(output.pushedMessages[0].isNoteOn());
+        REQUIRE(output.pushedMessages[0].getChannel() == 2);
+        REQUIRE(output.pushedMessages[0].getNoteNumber() == 36);
+
+        // Change slashDegree from none to slashDegree = 2 (E2 -> 40)
+        output.pushedMessages.clear();
+        music::VoicingSpec specSlash;
+        specSlash.bassMode = music::BassMode::slashDegree;
+        specSlash.slashDegree = 2;
+        config.setSpec(0, 0, specSlash);
+
+        controller.revoiceActiveChordIfHeld(0);
+        REQUIRE(controller.getActiveChord()->bassMidi.has_value());
+        REQUIRE(*controller.getActiveChord()->bassMidi == 40);
+
+        // Should emit note-off for old bass (36) on ch 2 and note-on for new bass (40) on ch 2
+        REQUIRE(output.pushedMessages.size() == 2);
+        REQUIRE(output.pushedMessages[0].isNoteOff());
+        REQUIRE(output.pushedMessages[0].getChannel() == 2);
+        REQUIRE(output.pushedMessages[0].getNoteNumber() == 36);
+        REQUIRE(output.pushedMessages[1].isNoteOn());
+        REQUIRE(output.pushedMessages[1].getChannel() == 2);
+        REQUIRE(output.pushedMessages[1].getNoteNumber() == 40);
+    }
+
     SECTION("allNotesOff, destructor and enqueue failure maintain consistent state") {
         REQUIRE(controller.pressDegree(0, 0.8f));
         output.pushedMessages.clear();

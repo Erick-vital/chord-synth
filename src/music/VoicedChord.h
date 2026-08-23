@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <optional>
 #include <string>
 #include "ChordRecipe.h"
 
@@ -111,6 +112,7 @@ struct VoicedChord {
     int rootMidi{0};
     VoicingSpec spec{};
     NoteSet notes{};
+    std::optional<int> bassMidi{};
     std::string label{};
 };
 

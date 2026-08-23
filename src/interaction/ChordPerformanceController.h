@@ -29,6 +29,7 @@ private:
 struct ActiveChord {
     int degree{0};
     music::NoteSet notes{};
+    std::optional<int> bassMidi{};
     float velocity{0.8f};
     int midiChannel{1};
 };

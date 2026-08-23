@@ -284,7 +284,7 @@ Tie-break by lower total span, then lexicographic MIDI order. Bass is excluded f
 
 Commit `feat: add deterministic nearest voice leading`.
 
-### Task 9: Add separate root/slash bass to voiced output and controller
+### Task 9: Add separate root/slash bass to voiced output and controller · [COMPLETED]
 
 **Objective:** Produce, display and safely release an optional bass note independently from the six harmonic tones.
 
