@@ -365,7 +365,7 @@ fifthPolicy, bassMode, slashDegree, voiceLeading
 
 Run `[state][harmony]`, processor state tests and malformed-state tests. Commit `feat: migrate harmony state to extended recipes`.
 
-### Task 12: Version JSON presets and preserve schema 1/2 loading
+### Task 12: Version JSON presets and preserve schema 1/2 loading · [COMPLETED]
 
 **Objective:** Export all harmony fields without breaking existing presets.
 

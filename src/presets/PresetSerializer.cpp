@@ -26,6 +26,48 @@ int waveformToIndex(const juce::String& name) {
     return 0; // fallback
 }
 
+int sanitizeQualityRule(int raw) noexcept {
+    if (raw < 0 || raw > 4)
+        return static_cast<int>(music::QualityRule::diatonic);
+    return raw;
+}
+
+int sanitizeShape(int raw) noexcept {
+    if (raw < 0 || raw > 8)
+        return static_cast<int>(music::ChordShape::triad);
+    return raw;
+}
+
+int sanitizeExtension(int raw) noexcept {
+    if (raw < 0 || raw > 1)
+        return static_cast<int>(music::ChordExtension::triad);
+    return raw;
+}
+
+int sanitizeStyle(int raw) noexcept {
+    if (raw < 0 || raw > 2)
+        return static_cast<int>(music::VoicingStyle::compact);
+    return raw;
+}
+
+int sanitizeFifthPolicy(int raw) noexcept {
+    if (raw < 0 || raw > 2)
+        return static_cast<int>(music::FifthPolicy::automatic);
+    return raw;
+}
+
+int sanitizeBassMode(int raw) noexcept {
+    if (raw < 0 || raw > 2)
+        return static_cast<int>(music::BassMode::none);
+    return raw;
+}
+
+int sanitizeVoiceLeading(int raw) noexcept {
+    if (raw < 0 || raw > 1)
+        return static_cast<int>(music::VoiceLeadingMode::manual);
+    return raw;
+}
+
 } // namespace
 
 juce::String PresetSerializer::toJson(const Preset& preset) {
@@ -64,7 +106,7 @@ juce::String PresetSerializer::toJson(const Preset& preset) {
 
     rootObj->setProperty("parameters", juce::var(paramsObj));
 
-    // Harmony section (schema version 2)
+    // Harmony section (schema version 3)
     auto* harmonyObj = new juce::DynamicObject();
     harmonyObj->setProperty("selected_scene", preset.harmony.getSelectedScene());
     harmonyObj->setProperty("live_revoice", preset.harmony.getLiveRevoice());
@@ -81,11 +123,16 @@ juce::String PresetSerializer::toJson(const Preset& preset) {
             const auto spec = config.getSpec(sceneIdx, degIdx);
             auto* degObj = new juce::DynamicObject();
             degObj->setProperty("index", degIdx);
+            degObj->setProperty("shape", static_cast<int>(spec.shape));
             degObj->setProperty("extension", static_cast<int>(spec.extension));
             degObj->setProperty("inversion", spec.inversion);
             degObj->setProperty("style", static_cast<int>(spec.style));
             degObj->setProperty("base_octave", spec.baseOctave);
             degObj->setProperty("quality_rule", static_cast<int>(spec.qualityRule));
+            degObj->setProperty("fifth_policy", static_cast<int>(spec.fifthPolicy));
+            degObj->setProperty("bass_mode", static_cast<int>(spec.bassMode));
+            degObj->setProperty("slash_degree", spec.slashDegree);
+            degObj->setProperty("voice_leading", static_cast<int>(spec.voiceLeading));
             degreesArray.add(juce::var(degObj));
         }
         sceneObj->setProperty("degrees", juce::var(degreesArray));
@@ -111,7 +158,7 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
         return std::nullopt;
 
     int version = rootObj->getProperty("schema_version");
-    if (version != 1 && version != 2)
+    if (version != 1 && version != 2 && version != 3)
         return std::nullopt;
 
     Preset preset;
@@ -264,7 +311,11 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
     }
 
     // Parse harmony section if present
-    preset.harmony.resetToDefaults();
+    if (version == 2) {
+        preset.harmony.resetToLegacyDefaults();
+    } else {
+        preset.harmony.resetToDefaults();
+    }
     if (rootObj->hasProperty("harmony")) {
         auto harmonyVar = rootObj->getProperty("harmony");
         if (harmonyVar.isObject()) {
@@ -279,9 +330,7 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
                 }
                 if (harmObj->hasProperty("quality_rule")) {
                     int q = harmObj->getProperty("quality_rule");
-                    if (q >= 0 && q <= 3) {
-                        preset.harmony.setQualityRule(static_cast<music::QualityRule>(q));
-                    }
+                    preset.harmony.setQualityRule(static_cast<music::QualityRule>(sanitizeQualityRule(q)));
                 }
                 if (harmObj->hasProperty("scenes")) {
                     auto scenesVar = harmObj->getProperty("scenes");
@@ -305,19 +354,47 @@ std::optional<Preset> PresetSerializer::fromJson(const juce::String& jsonString)
                                         int degIdx = degObj->getProperty("index");
                                         if (!music::HarmonyConfiguration::isValidDegree(degIdx)) continue;
 
-                                        int rawExt = degObj->getProperty("extension");
-                                        int rawInv = degObj->getProperty("inversion");
-                                        int rawStyle = degObj->getProperty("style");
-                                        int rawOctave = degObj->getProperty("base_octave");
-                                        int rawQual = degObj->getProperty("quality_rule");
-
                                         music::VoicingSpec spec;
-                                        spec.extension = (rawExt == 1) ? music::ChordExtension::seventh : music::ChordExtension::triad;
-                                        spec.inversion = std::clamp(rawInv, 0, 2);
-                                        spec.style = (rawStyle == 1) ? music::VoicingStyle::open : music::VoicingStyle::close;
-                                        spec.baseOctave = std::clamp(rawOctave, 2, 4);
-                                        if (rawQual >= 0 && rawQual <= 3) {
-                                            spec.qualityRule = static_cast<music::QualityRule>(rawQual);
+                                        if (version == 2) {
+                                            int rawExt = degObj->getProperty("extension");
+                                            int rawInv = degObj->getProperty("inversion");
+                                            int rawStyle = degObj->getProperty("style");
+                                            int rawOctave = degObj->getProperty("base_octave");
+                                            int rawQual = degObj->getProperty("quality_rule");
+
+                                            auto ext = static_cast<music::ChordExtension>(sanitizeExtension(rawExt));
+                                            spec.extension = ext;
+                                            spec.shape = (ext == music::ChordExtension::seventh) ? music::ChordShape::seventh : music::ChordShape::triad;
+                                            spec.inversion = std::clamp(rawInv, 0, 5);
+                                            spec.style = static_cast<music::VoicingStyle>(sanitizeStyle(rawStyle));
+                                            spec.baseOctave = std::clamp(rawOctave, 2, 4);
+                                            spec.qualityRule = static_cast<music::QualityRule>(sanitizeQualityRule(rawQual));
+                                            spec.fifthPolicy = music::FifthPolicy::automatic;
+                                            spec.bassMode = music::BassMode::none;
+                                            spec.slashDegree = 0;
+                                            spec.voiceLeading = music::VoiceLeadingMode::manual;
+                                        } else {
+                                            int rawShape = degObj->getProperty("shape");
+                                            int rawExt = degObj->getProperty("extension");
+                                            int rawInv = degObj->getProperty("inversion");
+                                            int rawStyle = degObj->getProperty("style");
+                                            int rawOctave = degObj->getProperty("base_octave");
+                                            int rawQual = degObj->getProperty("quality_rule");
+                                            int rawFifth = degObj->getProperty("fifth_policy");
+                                            int rawBass = degObj->getProperty("bass_mode");
+                                            int rawSlash = degObj->getProperty("slash_degree");
+                                            int rawLeading = degObj->getProperty("voice_leading");
+
+                                            spec.shape = static_cast<music::ChordShape>(sanitizeShape(rawShape));
+                                            spec.extension = static_cast<music::ChordExtension>(sanitizeExtension(rawExt));
+                                            spec.inversion = std::clamp(rawInv, 0, 5);
+                                            spec.style = static_cast<music::VoicingStyle>(sanitizeStyle(rawStyle));
+                                            spec.baseOctave = std::clamp(rawOctave, 2, 4);
+                                            spec.qualityRule = static_cast<music::QualityRule>(sanitizeQualityRule(rawQual));
+                                            spec.fifthPolicy = static_cast<music::FifthPolicy>(sanitizeFifthPolicy(rawFifth));
+                                            spec.bassMode = static_cast<music::BassMode>(sanitizeBassMode(rawBass));
+                                            spec.slashDegree = std::clamp(rawSlash, 0, 6);
+                                            spec.voiceLeading = static_cast<music::VoiceLeadingMode>(sanitizeVoiceLeading(rawLeading));
                                         }
 
                                         preset.harmony.getConfiguration().setSpec(sceneIdx, degIdx, spec);
@@ -344,7 +421,7 @@ Preset PresetSerializer::fromProcessorState(
     const state::HarmonyState& harmonyState,
     const juce::String& name) {
     Preset preset;
-    preset.schemaVersion = 2;
+    preset.schemaVersion = 3;
     preset.name = name;
     preset.harmony = harmonyState;
 

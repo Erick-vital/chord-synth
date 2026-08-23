@@ -155,6 +155,25 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
 
     SECTION("Scene change with liveRevoice=true calculates differential note changes") {
         controller.setLiveRevoice(true);
+        // Explicitly set Scene A degree 0 to triad and Scene D degree 0 to 1st inversion triad for test predictability
+        music::VoicingSpec specA{};
+        specA.shape = music::ChordShape::triad;
+        specA.style = music::VoicingStyle::compact;
+        specA.inversion = 0;
+        config.setSpec(0, 0, specA);
+
+        music::VoicingSpec specB{};
+        specB.shape = music::ChordShape::seventh;
+        specB.style = music::VoicingStyle::compact;
+        specB.inversion = 0;
+        config.setSpec(1, 0, specB);
+
+        music::VoicingSpec specD{};
+        specD.shape = music::ChordShape::triad;
+        specD.style = music::VoicingStyle::compact;
+        specD.inversion = 1;
+        config.setSpec(3, 0, specD);
+
         REQUIRE(controller.pressDegree(0, 0.8f)); // C triad: 48, 52, 55
         output.pushedMessages.clear();
 

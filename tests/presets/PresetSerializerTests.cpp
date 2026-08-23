@@ -136,7 +136,7 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         REQUIRE(p.harmony.getConfiguration().getSpec(0, 0) == music::HarmonyConfiguration::defaultSpecForSceneAndDegree(0, 0));
     }
 
-    SECTION("Schema version 2 preset serializes and deserializes harmony state faithfully") {
+    SECTION("Legacy schema version 2 preset serializes and deserializes harmony state faithfully") {
         Preset original;
         original.schemaVersion = 2;
         original.name = "Custom Harmony Preset";
@@ -155,10 +155,37 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         };
         original.harmony.getConfiguration().setSpec(2, 1, customSpec); // Scene C, Degree ii
 
-        auto jsonString = PresetSerializer::toJson(original);
-        REQUIRE_FALSE(jsonString.isEmpty());
+        // Manual v2 JSON construct to test v2 deserialization
+        juce::String v2Json = R"({
+            "schema_version": 2,
+            "name": "Custom Harmony Preset",
+            "parameters": {
+                "key": 2,
+                "waveform": "triangle"
+            },
+            "harmony": {
+                "selected_scene": 2,
+                "live_revoice": true,
+                "quality_rule": 1,
+                "scenes": [
+                    {
+                        "index": 2,
+                        "degrees": [
+                            {
+                                "index": 1,
+                                "extension": 1,
+                                "inversion": 1,
+                                "style": 1,
+                                "base_octave": 4,
+                                "quality_rule": 2
+                            }
+                        ]
+                    }
+                ]
+            }
+        })";
 
-        auto result = PresetSerializer::fromJson(jsonString);
+        auto result = PresetSerializer::fromJson(v2Json);
         REQUIRE(result.has_value());
         const auto& restored = *result;
         REQUIRE(restored.schemaVersion == 2);
@@ -168,9 +195,165 @@ TEST_CASE("PresetSerializer round-trip, validation, and versioning", "[presets]"
         REQUIRE(restored.harmony.getSelectedScene() == 2);
         REQUIRE(restored.harmony.getLiveRevoice() == true);
         REQUIRE(restored.harmony.getQualityRule() == music::QualityRule::major);
-        REQUIRE(restored.harmony.getConfiguration().getSpec(2, 1) == customSpec);
-        // Untouched degree should remain default
-        REQUIRE(restored.harmony.getConfiguration().getSpec(0, 0) == music::HarmonyConfiguration::defaultSpecForSceneAndDegree(0, 0));
+        // Untouched degree in v2 should remain legacy default
+        REQUIRE(restored.harmony.getConfiguration().getSpec(0, 0).shape == music::ChordShape::triad);
+        REQUIRE(restored.harmony.getConfiguration().getSpec(0, 0).style == music::VoicingStyle::compact);
+    }
+
+    SECTION("Schema version 3 preset serializes and deserializes all extended harmony fields faithfully") {
+        Preset original;
+        original.schemaVersion = 3;
+        original.name = "Extended Harmony V3";
+        original.parameters.key = 5; // F
+        original.parameters.waveform = "saw";
+        original.harmony.setSelectedScene(3);
+        original.harmony.setLiveRevoice(true);
+        original.harmony.setQualityRule(music::QualityRule::dominant);
+
+        music::VoicingSpec customSpec{
+            .shape = music::ChordShape::thirteenth,
+            .extension = music::ChordExtension::seventh,
+            .inversion = 2,
+            .style = music::VoicingStyle::rootless,
+            .fifthPolicy = music::FifthPolicy::omit,
+            .bassMode = music::BassMode::slashDegree,
+            .slashDegree = 4,
+            .voiceLeading = music::VoiceLeadingMode::nearest,
+            .baseOctave = 4,
+            .qualityRule = music::QualityRule::dominant
+        };
+        original.harmony.getConfiguration().setSpec(3, 4, customSpec);
+
+        auto jsonString = PresetSerializer::toJson(original);
+        REQUIRE_FALSE(jsonString.isEmpty());
+
+        auto result = PresetSerializer::fromJson(jsonString);
+        REQUIRE(result.has_value());
+        const auto& restored = *result;
+        REQUIRE(restored.schemaVersion == 3);
+        REQUIRE(restored.name == "Extended Harmony V3");
+        REQUIRE(restored.parameters.key == 5);
+        REQUIRE(restored.parameters.waveform == "saw");
+        REQUIRE(restored.harmony.getSelectedScene() == 3);
+        REQUIRE(restored.harmony.getLiveRevoice() == true);
+        REQUIRE(restored.harmony.getQualityRule() == music::QualityRule::dominant);
+
+        const auto& readSpec = restored.harmony.getConfiguration().getSpec(3, 4);
+        REQUIRE(readSpec.shape == music::ChordShape::thirteenth);
+        REQUIRE(readSpec.inversion == 2);
+        REQUIRE(readSpec.style == music::VoicingStyle::rootless);
+        REQUIRE(readSpec.baseOctave == 4);
+        REQUIRE(readSpec.qualityRule == music::QualityRule::dominant);
+        REQUIRE(readSpec.fifthPolicy == music::FifthPolicy::omit);
+        REQUIRE(readSpec.bassMode == music::BassMode::slashDegree);
+        REQUIRE(readSpec.slashDegree == 4);
+        REQUIRE(readSpec.voiceLeading == music::VoiceLeadingMode::nearest);
+    }
+
+    SECTION("Legacy schema version 2 JSON maps extension/style and populates compatibility defaults") {
+        juce::String v2Json = R"({
+            "schema_version": 2,
+            "name": "Legacy V2 Preset",
+            "parameters": {
+                "key": 3
+            },
+            "harmony": {
+                "selected_scene": 1,
+                "live_revoice": false,
+                "quality_rule": 1,
+                "scenes": [
+                    {
+                        "index": 1,
+                        "degrees": [
+                            {
+                                "index": 2,
+                                "extension": 1,
+                                "inversion": 1,
+                                "style": 1,
+                                "base_octave": 3,
+                                "quality_rule": 2
+                            }
+                        ]
+                    }
+                ]
+            }
+        })";
+
+        auto result = PresetSerializer::fromJson(v2Json);
+        REQUIRE(result.has_value());
+        const auto& p = *result;
+        REQUIRE(p.schemaVersion == 2);
+        REQUIRE(p.name == "Legacy V2 Preset");
+        REQUIRE(p.harmony.getSelectedScene() == 1);
+        REQUIRE(p.harmony.getQualityRule() == music::QualityRule::major);
+
+        const auto& spec = p.harmony.getConfiguration().getSpec(1, 2);
+        REQUIRE(spec.shape == music::ChordShape::seventh);
+        REQUIRE(spec.extension == music::ChordExtension::seventh);
+        REQUIRE(spec.inversion == 1);
+        REQUIRE(spec.style == music::VoicingStyle::open);
+        REQUIRE(spec.baseOctave == 3);
+        REQUIRE(spec.qualityRule == music::QualityRule::minor);
+        REQUIRE(spec.fifthPolicy == music::FifthPolicy::automatic);
+        REQUIRE(spec.bassMode == music::BassMode::none);
+        REQUIRE(spec.slashDegree == 0);
+        REQUIRE(spec.voiceLeading == music::VoiceLeadingMode::manual);
+    }
+
+    SECTION("Schema version 3 with malformed enum/degree values sanitizes safely") {
+        juce::String v3Malformed = R"({
+            "schema_version": 3,
+            "name": "Malformed Enums",
+            "parameters": {
+                "key": 0
+            },
+            "harmony": {
+                "selected_scene": 99,
+                "quality_rule": 88,
+                "scenes": [
+                    {
+                        "index": 0,
+                        "degrees": [
+                            {
+                                "index": 0,
+                                "shape": 99,
+                                "inversion": -5,
+                                "style": 42,
+                                "base_octave": 10,
+                                "quality_rule": 77,
+                                "fifth_policy": 88,
+                                "bass_mode": 99,
+                                "slash_degree": -1,
+                                "voice_leading": 12
+                            }
+                        ]
+                    }
+                ]
+            }
+        })";
+
+        auto result = PresetSerializer::fromJson(v3Malformed);
+        REQUIRE(result.has_value());
+        const auto& p = *result;
+        REQUIRE(p.harmony.getSelectedScene() == 3); // clamped to 0..3
+        REQUIRE(p.harmony.getQualityRule() == music::QualityRule::diatonic); // fallback
+
+        const auto& spec = p.harmony.getConfiguration().getSpec(0, 0);
+        REQUIRE(spec.shape == music::ChordShape::triad);
+        REQUIRE(spec.inversion == 0);
+        REQUIRE(spec.style == music::VoicingStyle::compact);
+        REQUIRE(spec.baseOctave == 4); // clamped to 2..4
+        REQUIRE(spec.qualityRule == music::QualityRule::diatonic);
+        REQUIRE(spec.fifthPolicy == music::FifthPolicy::automatic);
+        REQUIRE(spec.bassMode == music::BassMode::none);
+        REQUIRE(spec.slashDegree == 0);
+        REQUIRE(spec.voiceLeading == music::VoiceLeadingMode::manual);
+    }
+
+    SECTION("Unsupported schema version 4 fails deserialization") {
+        juce::String futureV4 = R"({ "schema_version": 4, "name": "Future V4", "parameters": {} })";
+        auto result = PresetSerializer::fromJson(futureV4);
+        REQUIRE_FALSE(result.has_value());
     }
 
     SECTION("Schema version 2 with malformed or missing harmony section falls back to defaults safely") {
@@ -435,7 +618,7 @@ TEST_CASE("PresetSerializer can load and store APVTS state", "[presets][apvts]")
             srcProcessor.getHarmonyState(),
             "HarmonyPreset");
 
-        REQUIRE(preset.schemaVersion == 2);
+        REQUIRE(preset.schemaVersion == 3);
         REQUIRE(preset.name == "HarmonyPreset");
         REQUIRE(preset.harmony.getSelectedScene() == 3);
         REQUIRE(preset.harmony.getLiveRevoice() == true);
