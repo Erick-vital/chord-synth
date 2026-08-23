@@ -85,6 +85,65 @@ TEST_CASE("Production PluginEditor instantiates full performance interface", "[g
 
     auto* cutoffSlider = findDescendantWithID(*editor, "cutoff-slider");
     REQUIRE(cutoffSlider != nullptr);
+
+    // Extended Chord Designer controls from Task 13
+    auto* shapeCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "chord-shape-select"));
+    REQUIRE(shapeCombo != nullptr);
+    REQUIRE(shapeCombo->getNumItems() == 9);
+    REQUIRE(shapeCombo->getItemText(0) == "Triada");
+    REQUIRE(shapeCombo->getItemText(1) == "7");
+    REQUIRE(shapeCombo->getItemText(2) == "9");
+    REQUIRE(shapeCombo->getItemText(3) == "11");
+    REQUIRE(shapeCombo->getItemText(4) == "13");
+    REQUIRE(shapeCombo->getItemText(5) == "add9");
+    REQUIRE(shapeCombo->getItemText(6) == "6/9");
+    REQUIRE(shapeCombo->getItemText(7) == "sus2");
+    REQUIRE(shapeCombo->getItemText(8) == "sus4");
+
+    auto* qualityCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "quality-select"));
+    REQUIRE(qualityCombo != nullptr);
+    REQUIRE(qualityCombo->getNumItems() == 5);
+    REQUIRE_FALSE(qualityCombo->isEnabled()); // Default diatonic mode disables quality override
+
+    auto* voicingStyleCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "voicing-style-select"));
+    REQUIRE(voicingStyleCombo != nullptr);
+    REQUIRE(voicingStyleCombo->getNumItems() == 3);
+    REQUIRE(voicingStyleCombo->getItemText(0) == "Compacto");
+    REQUIRE(voicingStyleCombo->getItemText(1) == "Abierto");
+    REQUIRE(voicingStyleCombo->getItemText(2) == "Rootless");
+
+    auto* fifthPolicyCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "fifth-policy-select"));
+    REQUIRE(fifthPolicyCombo != nullptr);
+    REQUIRE(fifthPolicyCombo->getNumItems() == 3);
+    REQUIRE(fifthPolicyCombo->getItemText(0) == "Auto");
+    REQUIRE(fifthPolicyCombo->getItemText(1) == "Incluir");
+    REQUIRE(fifthPolicyCombo->getItemText(2) == "Omitir");
+
+    auto* bassModeCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "bass-mode-select"));
+    REQUIRE(bassModeCombo != nullptr);
+    REQUIRE(bassModeCombo->getNumItems() == 3);
+    REQUIRE(bassModeCombo->getItemText(0) == "Sin bajo");
+    REQUIRE(bassModeCombo->getItemText(1) == juce::String::fromUTF8("Ra\xc3\xad" "z"));
+    REQUIRE(bassModeCombo->getItemText(2) == "Slash");
+
+    auto* slashDegreeCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "slash-degree-select"));
+    REQUIRE(slashDegreeCombo != nullptr);
+    REQUIRE(slashDegreeCombo->getNumItems() == 7);
+    REQUIRE_FALSE(slashDegreeCombo->isEnabled()); // Initially disabled when bassMode is Sin bajo
+
+    auto* voiceLeadingCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "voice-leading-select"));
+    REQUIRE(voiceLeadingCombo != nullptr);
+    REQUIRE(voiceLeadingCombo->getNumItems() == 2);
+    REQUIRE(voiceLeadingCombo->getItemText(0) == "Manual");
+    REQUIRE(voiceLeadingCombo->getItemText(1) == juce::String::fromUTF8("Autom\xc3\xa1tico"));
+
+    auto* inversionCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "inversion-select"));
+    REQUIRE(inversionCombo != nullptr);
+    REQUIRE(inversionCombo->getNumItems() == 3);
+
+    auto* registerCombo = dynamic_cast<juce::ComboBox*>(findDescendantWithID(*editor, "register-select"));
+    REQUIRE(registerCombo != nullptr);
+    REQUIRE(registerCombo->getNumItems() == 3);
 }
 
 TEST_CASE("Production PluginEditor renders Spanish interface text as UTF-8", "[gui][utf8]") {

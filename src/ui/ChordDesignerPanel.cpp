@@ -48,7 +48,7 @@ ChordDesignerPanel::ChordDesignerPanel(
     addAndMakeVisible(eyebrowLabel);
 
     chordTitleLabel.setText(utf8("I \xc2\xb7 C"), juce::dontSendNotification);
-    chordTitleLabel.setFont(juce::FontOptions(18.0f).withStyle("Bold"));
+    chordTitleLabel.setFont(juce::FontOptions(16.0f).withStyle("Bold"));
     chordTitleLabel.setColour(juce::Label::textColourId, colors::text);
     addAndMakeVisible(chordTitleLabel);
 
@@ -59,38 +59,121 @@ ChordDesignerPanel::ChordDesignerPanel(
     badgeLabel.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(badgeLabel);
 
-    // Field 1: Calidad
+    // 1. Forma (chord-shape-select): Triada, 7, 9, 11, 13, add9, 6/9, sus2, sus4
+    shapeLabel.setText("FORMA", juce::dontSendNotification);
+    shapeLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+    shapeLabel.setColour(juce::Label::textColourId, colors::textMuted);
+    addAndMakeVisible(shapeLabel);
+
+    shapeComboBox.setComponentID("chord-shape-select");
+    shapeComboBox.addItem("Triada", 1);
+    shapeComboBox.addItem("7", 2);
+    shapeComboBox.addItem("9", 3);
+    shapeComboBox.addItem("11", 4);
+    shapeComboBox.addItem("13", 5);
+    shapeComboBox.addItem("add9", 6);
+    shapeComboBox.addItem("6/9", 7);
+    shapeComboBox.addItem("sus2", 8);
+    shapeComboBox.addItem("sus4", 9);
+    shapeComboBox.setSelectedId(1, juce::dontSendNotification);
+    shapeComboBox.onChange = [this]() { updatePreview(); };
+    addAndMakeVisible(shapeComboBox);
+
+    // 2. Calidad (quality-select): Según escala, Mayor, Menor, Dominante, Disminuido
     qualityLabel.setText("CALIDAD", juce::dontSendNotification);
     qualityLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
     qualityLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(qualityLabel);
 
+    qualityComboBox.setComponentID("quality-select");
     qualityComboBox.addItem(utf8("Seg\xc3\xba""n escala"), 1);
     qualityComboBox.addItem("Mayor", 2);
     qualityComboBox.addItem("Menor", 3);
-    qualityComboBox.addItem("Disminuido", 4);
+    qualityComboBox.addItem("Dominante", 4);
+    qualityComboBox.addItem("Disminuido", 5);
     qualityComboBox.setSelectedId(1, juce::dontSendNotification);
     qualityComboBox.onChange = [this]() { updatePreview(); };
     addAndMakeVisible(qualityComboBox);
 
-    // Field 2: Extensión
-    extensionLabel.setText(utf8("EXTENSI\xc3\x93N"), juce::dontSendNotification);
-    extensionLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
-    extensionLabel.setColour(juce::Label::textColourId, colors::textMuted);
-    addAndMakeVisible(extensionLabel);
+    // 3. Distribución / Voicing style (voicing-style-select): Compacto, Abierto, Rootless
+    voicingStyleLabel.setText(utf8("DISTRIBUCI\xc3\x93N"), juce::dontSendNotification);
+    voicingStyleLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+    voicingStyleLabel.setColour(juce::Label::textColourId, colors::textMuted);
+    addAndMakeVisible(voicingStyleLabel);
 
-    extensionComboBox.addItem("Triada", 1);
-    extensionComboBox.addItem(utf8("S\xc3\xa9ptima"), 2);
-    extensionComboBox.setSelectedId(1, juce::dontSendNotification);
-    extensionComboBox.onChange = [this]() { updatePreview(); };
-    addAndMakeVisible(extensionComboBox);
+    voicingStyleComboBox.setComponentID("voicing-style-select");
+    voicingStyleComboBox.addItem("Compacto", 1);
+    voicingStyleComboBox.addItem("Abierto", 2);
+    voicingStyleComboBox.addItem("Rootless", 3);
+    voicingStyleComboBox.setSelectedId(1, juce::dontSendNotification);
+    voicingStyleComboBox.onChange = [this]() { updatePreview(); };
+    addAndMakeVisible(voicingStyleComboBox);
 
-    // Field 3: Inversión
+    // 4. Quinta (fifth-policy-select): Auto, Incluir, Omitir
+    fifthPolicyLabel.setText("QUINTA", juce::dontSendNotification);
+    fifthPolicyLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+    fifthPolicyLabel.setColour(juce::Label::textColourId, colors::textMuted);
+    addAndMakeVisible(fifthPolicyLabel);
+
+    fifthPolicyComboBox.setComponentID("fifth-policy-select");
+    fifthPolicyComboBox.addItem("Auto", 1);
+    fifthPolicyComboBox.addItem("Incluir", 2);
+    fifthPolicyComboBox.addItem("Omitir", 3);
+    fifthPolicyComboBox.setSelectedId(1, juce::dontSendNotification);
+    fifthPolicyComboBox.onChange = [this]() { updatePreview(); };
+    addAndMakeVisible(fifthPolicyComboBox);
+
+    // 5. Modo de bajo (bass-mode-select): Sin bajo, Raíz, Slash
+    bassModeLabel.setText("MODO DE BAJO", juce::dontSendNotification);
+    bassModeLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+    bassModeLabel.setColour(juce::Label::textColourId, colors::textMuted);
+    addAndMakeVisible(bassModeLabel);
+
+    bassModeComboBox.setComponentID("bass-mode-select");
+    bassModeComboBox.addItem("Sin bajo", 1);
+    bassModeComboBox.addItem(utf8("Ra\xc3\xad""z"), 2);
+    bassModeComboBox.addItem("Slash", 3);
+    bassModeComboBox.setSelectedId(1, juce::dontSendNotification);
+    bassModeComboBox.onChange = [this]() {
+        const bool isSlash = (bassModeComboBox.getSelectedId() == 3);
+        slashDegreeComboBox.setEnabled(isSlash);
+        updatePreview();
+    };
+    addAndMakeVisible(bassModeComboBox);
+
+    // 6. Grado slash (slash-degree-select): I..VII
+    slashDegreeLabel.setText("GRADO SLASH", juce::dontSendNotification);
+    slashDegreeLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+    slashDegreeLabel.setColour(juce::Label::textColourId, colors::textMuted);
+    addAndMakeVisible(slashDegreeLabel);
+
+    slashDegreeComboBox.setComponentID("slash-degree-select");
+    updateSlashDegreeItems();
+    slashDegreeComboBox.setSelectedId(1, juce::dontSendNotification);
+    slashDegreeComboBox.setEnabled(false); // Initially disabled (bassMode is none)
+    slashDegreeComboBox.onChange = [this]() { updatePreview(); };
+    addAndMakeVisible(slashDegreeComboBox);
+
+    // 7. Enlace de voces (voice-leading-select): Manual, Automático
+    voiceLeadingLabel.setText("ENLACE DE VOCES", juce::dontSendNotification);
+    voiceLeadingLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+    voiceLeadingLabel.setColour(juce::Label::textColourId, colors::textMuted);
+    addAndMakeVisible(voiceLeadingLabel);
+
+    voiceLeadingComboBox.setComponentID("voice-leading-select");
+    voiceLeadingComboBox.addItem("Manual", 1);
+    voiceLeadingComboBox.addItem(utf8("Autom\xc3\xa1tico"), 2);
+    voiceLeadingComboBox.setSelectedId(1, juce::dontSendNotification);
+    voiceLeadingComboBox.onChange = [this]() { updatePreview(); };
+    addAndMakeVisible(voiceLeadingComboBox);
+
+    // 8. Inversión (inversion-select): Raíz, 1ª inversión, 2ª inversión
     inversionLabel.setText(utf8("INVERSI\xc3\x93N"), juce::dontSendNotification);
     inversionLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
     inversionLabel.setColour(juce::Label::textColourId, colors::textMuted);
     addAndMakeVisible(inversionLabel);
 
+    inversionComboBox.setComponentID("inversion-select");
     inversionComboBox.addItem(utf8("Ra\xc3\xad""z"), 1);
     inversionComboBox.addItem(utf8("1\xc2\xaa inversi\xc3\xb3n"), 2);
     inversionComboBox.addItem(utf8("2\xc2\xaa inversi\xc3\xb3n"), 3);
@@ -98,34 +181,23 @@ ChordDesignerPanel::ChordDesignerPanel(
     inversionComboBox.onChange = [this]() { updatePreview(); };
     addAndMakeVisible(inversionComboBox);
 
-    // Field 4: Distribución
-    styleLabel.setText(utf8("DISTRIBUCI\xc3\x93N"), juce::dontSendNotification);
-    styleLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
-    styleLabel.setColour(juce::Label::textColourId, colors::textMuted);
-    addAndMakeVisible(styleLabel);
+    // 9. Registro / Octava (register-select): 2, 3, 4
+    registerLabel.setText("REGISTRO", juce::dontSendNotification);
+    registerLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+    registerLabel.setColour(juce::Label::textColourId, colors::textMuted);
+    addAndMakeVisible(registerLabel);
 
-    styleComboBox.addItem("Cerrado", 1);
-    styleComboBox.addItem("Abierto", 2);
-    styleComboBox.setSelectedId(1, juce::dontSendNotification);
-    styleComboBox.onChange = [this]() { updatePreview(); };
-    addAndMakeVisible(styleComboBox);
-
-    // Field 5: Registro / Octava
-    octaveLabel.setText("REGISTRO", juce::dontSendNotification);
-    octaveLabel.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
-    octaveLabel.setColour(juce::Label::textColourId, colors::textMuted);
-    addAndMakeVisible(octaveLabel);
-
-    octaveComboBox.addItem("2", 1);
-    octaveComboBox.addItem("3", 2);
-    octaveComboBox.addItem("4", 3);
-    octaveComboBox.setSelectedId(2, juce::dontSendNotification);
-    octaveComboBox.onChange = [this]() { updatePreview(); };
-    addAndMakeVisible(octaveComboBox);
+    registerComboBox.setComponentID("register-select");
+    registerComboBox.addItem("2", 1);
+    registerComboBox.addItem("3", 2);
+    registerComboBox.addItem("4", 3);
+    registerComboBox.setSelectedId(2, juce::dontSendNotification);
+    registerComboBox.onChange = [this]() { updatePreview(); };
+    addAndMakeVisible(registerComboBox);
 
     // Preview Label
     previewLabel.setText(utf8("C3 \xc2\xb7 E3 \xc2\xb7 G3"), juce::dontSendNotification);
-    previewLabel.setFont(juce::FontOptions(12.0f).withStyle("Bold"));
+    previewLabel.setFont(juce::FontOptions(11.5f).withStyle("Bold"));
     previewLabel.setColour(juce::Label::textColourId, colors::cyan);
     previewLabel.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(previewLabel);
@@ -167,6 +239,17 @@ ChordDesignerPanel::ChordDesignerPanel(
 ChordDesignerPanel::~ChordDesignerPanel()
 {
     stopTimer();
+}
+
+void ChordDesignerPanel::updateSlashDegreeItems()
+{
+    const int currentSelected = slashDegreeComboBox.getSelectedId();
+    slashDegreeComboBox.clear(juce::dontSendNotification);
+    const auto scale = getScale ? getScale() : music::Scale::major;
+    for (int deg = 0; deg < 7; ++deg) {
+        slashDegreeComboBox.addItem(utf8(degreeRomanLabel(scale, deg)), deg + 1);
+    }
+    slashDegreeComboBox.setSelectedId(currentSelected > 0 ? currentSelected : 1, juce::dontSendNotification);
 }
 
 void ChordDesignerPanel::timerCallback()
@@ -217,6 +300,8 @@ void ChordDesignerPanel::refresh()
         currentScene = getScene();
     }
 
+    updateSlashDegreeItems();
+
     const auto spec = config.getSpec(currentScene, currentDegree);
     syncControlsWithSpec(spec);
     updatePreview();
@@ -224,57 +309,150 @@ void ChordDesignerPanel::refresh()
 
 void ChordDesignerPanel::syncControlsWithSpec(const music::VoicingSpec& spec)
 {
-    // Quality
+    // Shape: Triada (1), 7 (2), 9 (3), 11 (4), 13 (5), add9 (6), 6/9 (7), sus2 (8), sus4 (9)
+    switch (spec.shape) {
+        case music::ChordShape::triad:
+            // Check legacy extension
+            if (spec.extension == music::ChordExtension::seventh) {
+                shapeComboBox.setSelectedId(2, juce::dontSendNotification);
+            } else {
+                shapeComboBox.setSelectedId(1, juce::dontSendNotification);
+            }
+            break;
+        case music::ChordShape::seventh:    shapeComboBox.setSelectedId(2, juce::dontSendNotification); break;
+        case music::ChordShape::ninth:      shapeComboBox.setSelectedId(3, juce::dontSendNotification); break;
+        case music::ChordShape::eleventh:   shapeComboBox.setSelectedId(4, juce::dontSendNotification); break;
+        case music::ChordShape::thirteenth: shapeComboBox.setSelectedId(5, juce::dontSendNotification); break;
+        case music::ChordShape::add9:       shapeComboBox.setSelectedId(6, juce::dontSendNotification); break;
+        case music::ChordShape::sixNine:    shapeComboBox.setSelectedId(7, juce::dontSendNotification); break;
+        case music::ChordShape::sus2:       shapeComboBox.setSelectedId(8, juce::dontSendNotification); break;
+        case music::ChordShape::sus4:       shapeComboBox.setSelectedId(9, juce::dontSendNotification); break;
+        default:                            shapeComboBox.setSelectedId(1, juce::dontSendNotification); break;
+    }
+
+    // Quality: Según escala (1), Mayor (2), Menor (3), Dominante (4), Disminuido (5)
     if (!freeMode) {
         qualityComboBox.setSelectedId(1, juce::dontSendNotification);
     } else {
         switch (spec.qualityRule) {
             case music::QualityRule::major:      qualityComboBox.setSelectedId(2, juce::dontSendNotification); break;
             case music::QualityRule::minor:      qualityComboBox.setSelectedId(3, juce::dontSendNotification); break;
-            case music::QualityRule::diminished: qualityComboBox.setSelectedId(4, juce::dontSendNotification); break;
+            case music::QualityRule::dominant:   qualityComboBox.setSelectedId(4, juce::dontSendNotification); break;
+            case music::QualityRule::diminished: qualityComboBox.setSelectedId(5, juce::dontSendNotification); break;
             case music::QualityRule::diatonic:
             default:                             qualityComboBox.setSelectedId(1, juce::dontSendNotification); break;
         }
     }
 
-    // Extension
-    extensionComboBox.setSelectedId(spec.extension == music::ChordExtension::seventh ? 2 : 1, juce::dontSendNotification);
+    // Voicing Style: Compacto (1), Abierto (2), Rootless (3)
+    switch (spec.style) {
+        case music::VoicingStyle::open:     voicingStyleComboBox.setSelectedId(2, juce::dontSendNotification); break;
+        case music::VoicingStyle::rootless: voicingStyleComboBox.setSelectedId(3, juce::dontSendNotification); break;
+        case music::VoicingStyle::compact:
+        default:                            voicingStyleComboBox.setSelectedId(1, juce::dontSendNotification); break;
+    }
 
-    // Inversion
+    // Fifth Policy: Auto (1), Incluir (2), Omitir (3)
+    switch (spec.fifthPolicy) {
+        case music::FifthPolicy::include: fifthPolicyComboBox.setSelectedId(2, juce::dontSendNotification); break;
+        case music::FifthPolicy::omit:    fifthPolicyComboBox.setSelectedId(3, juce::dontSendNotification); break;
+        case music::FifthPolicy::automatic:
+        default:                          fifthPolicyComboBox.setSelectedId(1, juce::dontSendNotification); break;
+    }
+
+    // Bass Mode: Sin bajo (1), Raíz (2), Slash (3)
+    switch (spec.bassMode) {
+        case music::BassMode::root:        bassModeComboBox.setSelectedId(2, juce::dontSendNotification); break;
+        case music::BassMode::slashDegree: bassModeComboBox.setSelectedId(3, juce::dontSendNotification); break;
+        case music::BassMode::none:
+        default:                           bassModeComboBox.setSelectedId(1, juce::dontSendNotification); break;
+    }
+    slashDegreeComboBox.setEnabled(spec.bassMode == music::BassMode::slashDegree);
+
+    // Slash Degree: 0..6 -> 1..7
+    slashDegreeComboBox.setSelectedId(std::clamp(spec.slashDegree, 0, 6) + 1, juce::dontSendNotification);
+
+    // Voice Leading: Manual (1), Automático (2)
+    voiceLeadingComboBox.setSelectedId(spec.voiceLeading == music::VoiceLeadingMode::nearest ? 2 : 1, juce::dontSendNotification);
+
+    // Inversion: 0..2 -> 1..3
     inversionComboBox.setSelectedId(std::clamp(spec.inversion, 0, 2) + 1, juce::dontSendNotification);
 
-    // Style
-    styleComboBox.setSelectedId(spec.style == music::VoicingStyle::open ? 2 : 1, juce::dontSendNotification);
-
-    // Octave
-    octaveComboBox.setSelectedId(std::clamp(spec.baseOctave, 2, 4) - 1, juce::dontSendNotification);
+    // Register / Base Octave: 2, 3, 4 -> 1, 2, 3
+    registerComboBox.setSelectedId(std::clamp(spec.baseOctave, 2, 4) - 1, juce::dontSendNotification);
 }
 
 music::VoicingSpec ChordDesignerPanel::buildSpecFromControls() const
 {
     music::VoicingSpec spec;
 
+    // Shape
+    switch (shapeComboBox.getSelectedId()) {
+        case 1: spec.shape = music::ChordShape::triad; break;
+        case 2: spec.shape = music::ChordShape::seventh; break;
+        case 3: spec.shape = music::ChordShape::ninth; break;
+        case 4: spec.shape = music::ChordShape::eleventh; break;
+        case 5: spec.shape = music::ChordShape::thirteenth; break;
+        case 6: spec.shape = music::ChordShape::add9; break;
+        case 7: spec.shape = music::ChordShape::sixNine; break;
+        case 8: spec.shape = music::ChordShape::sus2; break;
+        case 9: spec.shape = music::ChordShape::sus4; break;
+        default: spec.shape = music::ChordShape::triad; break;
+    }
+    spec.extension = (spec.shape == music::ChordShape::seventh)
+        ? music::ChordExtension::seventh
+        : music::ChordExtension::triad;
+
+    // Quality
     if (!freeMode || qualityComboBox.getSelectedId() == 1) {
         spec.qualityRule = music::QualityRule::diatonic;
     } else {
         switch (qualityComboBox.getSelectedId()) {
             case 2: spec.qualityRule = music::QualityRule::major; break;
             case 3: spec.qualityRule = music::QualityRule::minor; break;
-            case 4: spec.qualityRule = music::QualityRule::diminished; break;
+            case 4: spec.qualityRule = music::QualityRule::dominant; break;
+            case 5: spec.qualityRule = music::QualityRule::diminished; break;
             default: spec.qualityRule = music::QualityRule::diatonic; break;
         }
     }
 
-    spec.extension = (extensionComboBox.getSelectedId() == 2)
-        ? music::ChordExtension::seventh
-        : music::ChordExtension::triad;
+    // Voicing Style
+    switch (voicingStyleComboBox.getSelectedId()) {
+        case 2: spec.style = music::VoicingStyle::open; break;
+        case 3: spec.style = music::VoicingStyle::rootless; break;
+        case 1:
+        default: spec.style = music::VoicingStyle::compact; break;
+    }
 
-    spec.inversion = inversionComboBox.getSelectedId() - 1;
-    spec.style = (styleComboBox.getSelectedId() == 2)
-        ? music::VoicingStyle::open
-        : music::VoicingStyle::close;
+    // Fifth Policy
+    switch (fifthPolicyComboBox.getSelectedId()) {
+        case 2: spec.fifthPolicy = music::FifthPolicy::include; break;
+        case 3: spec.fifthPolicy = music::FifthPolicy::omit; break;
+        case 1:
+        default: spec.fifthPolicy = music::FifthPolicy::automatic; break;
+    }
 
-    spec.baseOctave = octaveComboBox.getSelectedId() + 1; // 1->2, 2->3, 3->4
+    // Bass Mode
+    switch (bassModeComboBox.getSelectedId()) {
+        case 2: spec.bassMode = music::BassMode::root; break;
+        case 3: spec.bassMode = music::BassMode::slashDegree; break;
+        case 1:
+        default: spec.bassMode = music::BassMode::none; break;
+    }
+
+    // Slash Degree (1..7 -> 0..6)
+    spec.slashDegree = std::clamp(slashDegreeComboBox.getSelectedId() - 1, 0, 6);
+
+    // Voice Leading
+    spec.voiceLeading = (voiceLeadingComboBox.getSelectedId() == 2)
+        ? music::VoiceLeadingMode::nearest
+        : music::VoiceLeadingMode::manual;
+
+    // Inversion (1..3 -> 0..2)
+    spec.inversion = std::clamp(inversionComboBox.getSelectedId() - 1, 0, 2);
+
+    // Register / Base Octave (1..3 -> 2..4)
+    spec.baseOctave = std::clamp(registerComboBox.getSelectedId() + 1, 2, 4);
 
     return spec;
 }
@@ -287,21 +465,29 @@ void ChordDesignerPanel::updatePreview()
         previewSpec.qualityRule = music::QualityRule::diatonic;
     }
 
-    const auto voiced = voicer.voiceChord(tonic, currentDegree, previewSpec, getScale());
+    const auto voiced = voicer.voiceChord(tonic, currentDegree, previewSpec, getScale ? getScale() : music::Scale::major);
 
     chordTitleLabel.setText(
-        utf8(degreeRomanLabel(getScale(), currentDegree)) + utf8(" \xc2\xb7 ") + voiced.label,
+        utf8(degreeRomanLabel(getScale ? getScale() : music::Scale::major, currentDegree)) + utf8(" \xc2\xb7 ") + voiced.label,
         juce::dontSendNotification);
 
-    juce::String notesStr;
+    juce::String previewStr;
     for (int n = 0; n < voiced.notes.size(); ++n) {
-        if (n > 0) notesStr << utf8(" \xc2\xb7 ");
+        if (n > 0) previewStr << utf8(" \xc2\xb7 ");
         int midiVal = voiced.notes[static_cast<std::size_t>(n)];
         int pc = ((midiVal % 12) + 12) % 12;
         int oct = (midiVal / 12) - 1;
-        notesStr << pitchNames[static_cast<std::size_t>(pc)] << oct;
+        previewStr << pitchNames[static_cast<std::size_t>(pc)] << oct;
     }
-    previewLabel.setText(notesStr, juce::dontSendNotification);
+
+    if (voiced.bassMidi.has_value()) {
+        int bMidi = *voiced.bassMidi;
+        int bPc = ((bMidi % 12) + 12) % 12;
+        int bOct = (bMidi / 12) - 1;
+        previewStr << "   |   Bajo: " << pitchNames[static_cast<std::size_t>(bPc)] << bOct;
+    }
+
+    previewLabel.setText(previewStr, juce::dontSendNotification);
 }
 
 void ChordDesignerPanel::paint(juce::Graphics& g)
@@ -313,7 +499,7 @@ void ChordDesignerPanel::paint(juce::Graphics& g)
     g.drawRoundedRectangle(bounds, 14.0f, 1.0f);
 
     // Title separator line
-    g.drawLine(0.0f, 40.0f, bounds.getWidth(), 40.0f, 1.0f);
+    g.drawLine(0.0f, 36.0f, bounds.getWidth(), 36.0f, 1.0f);
 
     // Note preview dashed border
     auto previewBounds = previewLabel.getBounds().toFloat();
@@ -329,64 +515,82 @@ void ChordDesignerPanel::resized()
 {
     auto bounds = getLocalBounds();
 
-    // 1. Panel Header (40 px)
-    auto headerArea = bounds.removeFromTop(40).reduced(14, 8);
-    headerSubtleLabel.setBounds(headerArea.removeFromRight(100));
+    // 1. Panel Header (36 px)
+    auto headerArea = bounds.removeFromTop(36).reduced(12, 6);
+    headerSubtleLabel.setBounds(headerArea.removeFromRight(80));
     headerTitleLabel.setBounds(headerArea);
 
-    auto bodyArea = bounds.reduced(14, 10);
+    auto bodyArea = bounds.reduced(12, 8);
 
-    // 2. Selected Chord Info
-    auto topInfoArea = bodyArea.removeFromTop(38);
-    badgeLabel.setBounds(topInfoArea.removeFromRight(95).reduced(0, 8));
+    // 2. Selected Chord Info (34 px)
+    auto topInfoArea = bodyArea.removeFromTop(34);
+    badgeLabel.setBounds(topInfoArea.removeFromRight(100).reduced(0, 6));
     eyebrowLabel.setBounds(topInfoArea.removeFromTop(12));
     chordTitleLabel.setBounds(topInfoArea);
 
+    bodyArea.removeFromTop(4);
+
+    // 3. Grid area for the 9 controls arranged cleanly in 4 rows:
+    // Row 1 (2 cols): Forma (chord-shape-select), Calidad (quality-select)
+    // Row 2 (2 cols): Distribución (voicing-style-select), Quinta (fifth-policy-select)
+    // Row 3 (2 cols): Modo de bajo (bass-mode-select), Grado Slash (slash-degree-select)
+    // Row 4 (3 cols): Enlace de voces (voice-leading-select), Inversión (inversion-select), Registro (register-select)
+    const int rowHeight = 42;
+    const int rowSpacing = 4;
+    const int colSpacing = 8;
+
+    auto layout2Cols = [&](juce::Rectangle<int> row, juce::Label& lbl1, juce::ComboBox& cb1, juce::Label& lbl2, juce::ComboBox& cb2) {
+        int w = (row.getWidth() - colSpacing) / 2;
+        auto c1 = row.removeFromLeft(w);
+        auto c2 = row.removeFromRight(w);
+
+        lbl1.setBounds(c1.removeFromTop(13));
+        cb1.setBounds(c1.removeFromTop(25));
+
+        lbl2.setBounds(c2.removeFromTop(13));
+        cb2.setBounds(c2.removeFromTop(25));
+    };
+
+    auto r1 = bodyArea.removeFromTop(rowHeight);
+    layout2Cols(r1, shapeLabel, shapeComboBox, qualityLabel, qualityComboBox);
+    bodyArea.removeFromTop(rowSpacing);
+
+    auto r2 = bodyArea.removeFromTop(rowHeight);
+    layout2Cols(r2, voicingStyleLabel, voicingStyleComboBox, fifthPolicyLabel, fifthPolicyComboBox);
+    bodyArea.removeFromTop(rowSpacing);
+
+    auto r3 = bodyArea.removeFromTop(rowHeight);
+    layout2Cols(r3, bassModeLabel, bassModeComboBox, slashDegreeLabel, slashDegreeComboBox);
+    bodyArea.removeFromTop(rowSpacing);
+
+    auto r4 = bodyArea.removeFromTop(rowHeight);
+    int col3W = (r4.getWidth() - (colSpacing * 2)) / 3;
+    auto c4_1 = r4.removeFromLeft(col3W);
+    auto c4_2 = r4.removeFromLeft(col3W + colSpacing).removeFromRight(col3W);
+    auto c4_3 = r4;
+
+    voiceLeadingLabel.setBounds(c4_1.removeFromTop(13));
+    voiceLeadingComboBox.setBounds(c4_1.removeFromTop(25));
+
+    inversionLabel.setBounds(c4_2.removeFromTop(13));
+    inversionComboBox.setBounds(c4_2.removeFromTop(25));
+
+    registerLabel.setBounds(c4_3.removeFromTop(13));
+    registerComboBox.setBounds(c4_3.removeFromTop(25));
+
     bodyArea.removeFromTop(6);
 
-    // 3. 2-column Editor Grid
-    auto gridArea = bodyArea.removeFromTop(108);
-    int colWidth = (gridArea.getWidth() - 10) / 2;
+    // 4. Note Preview Box (28 px)
+    previewLabel.setBounds(bodyArea.removeFromTop(28));
 
-    auto row1 = gridArea.removeFromTop(50);
-    auto col1_1 = row1.removeFromLeft(colWidth);
-    auto col1_2 = row1.removeFromRight(colWidth);
+    bodyArea.removeFromTop(6);
 
-    qualityLabel.setBounds(col1_1.removeFromTop(14));
-    qualityComboBox.setBounds(col1_1.removeFromTop(30));
-
-    extensionLabel.setBounds(col1_2.removeFromTop(14));
-    extensionComboBox.setBounds(col1_2.removeFromTop(30));
-
-    gridArea.removeFromTop(8);
-
-    auto row2 = gridArea.removeFromTop(50);
-    int col3Width = (gridArea.getWidth() - 16) / 3;
-    auto col2_1 = row2.removeFromLeft(col3Width);
-    auto col2_2 = row2.removeFromLeft(col3Width);
-    auto col2_3 = row2;
-
-    inversionLabel.setBounds(col2_1.removeFromTop(14));
-    inversionComboBox.setBounds(col2_1.removeFromTop(30));
-
-    styleLabel.setBounds(col2_2.removeFromTop(14));
-    styleComboBox.setBounds(col2_2.removeFromTop(30));
-
-    octaveLabel.setBounds(col2_3.removeFromTop(14));
-    octaveComboBox.setBounds(col2_3.removeFromTop(30));
-
-    bodyArea.removeFromTop(8);
-
-    // 4. Note Preview Box
-    previewLabel.setBounds(bodyArea.removeFromTop(34));
-
-    bodyArea.removeFromTop(10);
-
-    // 5. Action Buttons
-    auto actionArea = bodyArea.removeFromTop(34);
+    // 5. Action Buttons (30 px)
+    auto actionArea = bodyArea.removeFromTop(30);
     resetButton.setBounds(actionArea.removeFromRight(85));
     actionArea.removeFromRight(8);
     saveButton.setBounds(actionArea);
 }
 
 } // namespace chordsynth::ui
+

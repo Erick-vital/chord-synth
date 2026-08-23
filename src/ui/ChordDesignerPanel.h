@@ -32,6 +32,7 @@ private:
     void updatePreview();
     void syncControlsWithSpec(const music::VoicingSpec& spec);
     [[nodiscard]] music::VoicingSpec buildSpecFromControls() const;
+    void updateSlashDegreeItems();
 
     music::HarmonyConfiguration& config;
     const music::DiatonicChordVoicer& voicer;
@@ -52,20 +53,32 @@ private:
     juce::Label badgeLabel;
 
     // Control fields
+    juce::Label shapeLabel;
+    juce::ComboBox shapeComboBox;
+
     juce::Label qualityLabel;
     juce::ComboBox qualityComboBox;
 
-    juce::Label extensionLabel;
-    juce::ComboBox extensionComboBox;
+    juce::Label voicingStyleLabel;
+    juce::ComboBox voicingStyleComboBox;
+
+    juce::Label fifthPolicyLabel;
+    juce::ComboBox fifthPolicyComboBox;
+
+    juce::Label bassModeLabel;
+    juce::ComboBox bassModeComboBox;
+
+    juce::Label slashDegreeLabel;
+    juce::ComboBox slashDegreeComboBox;
+
+    juce::Label voiceLeadingLabel;
+    juce::ComboBox voiceLeadingComboBox;
 
     juce::Label inversionLabel;
     juce::ComboBox inversionComboBox;
 
-    juce::Label styleLabel;
-    juce::ComboBox styleComboBox;
-
-    juce::Label octaveLabel;
-    juce::ComboBox octaveComboBox;
+    juce::Label registerLabel;
+    juce::ComboBox registerComboBox;
 
     // Preview
     juce::Label previewLabel;
@@ -80,3 +93,4 @@ private:
 };
 
 } // namespace chordsynth::ui
+

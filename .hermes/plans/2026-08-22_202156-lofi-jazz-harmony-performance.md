@@ -382,7 +382,7 @@ Run `[presets]`, `[state][harmony]`, processor state round trip. Commit `feat: s
 
 ## Phase 3 — Lo‑Fi voicing UI
 
-### Task 13: Extend the chord designer controls and preview
+### Task 13: Extend the chord designer controls and preview · [COMPLETED]
 
 **Objective:** Let users edit every persistent recipe/voicing field with accurate labels and visible save feedback.
 
