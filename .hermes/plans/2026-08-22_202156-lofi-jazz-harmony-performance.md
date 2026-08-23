@@ -580,7 +580,7 @@ Run parameter, processor, arp and long render-safety tests. Commit `feat: integr
 
 Test that loading each preset synchronizes harmony state, controller, palette, pad labels and designer preview. Commit `feat: ship lo-fi and jazz harmony presets`.
 
-### Task 20: Update user and architecture documentation
+### Task 20: Update user and architecture documentation · [COMPLETED]
 
 **Objective:** Explain musical semantics, mappings and compatibility accurately.
 

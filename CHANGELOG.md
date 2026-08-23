@@ -5,6 +5,28 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [Unreleased]
+
+### Añadido
+- Sistema de armonía Lo‑Fi/Jazz con recetas de tríada, 7, 9, 11, 13, add9, 6/9, sus2 y sus4.
+- Políticas de voicing compacto, abierto y rootless; omisión de quinta, bajo raíz/slash y voice leading nearest determinista.
+- Escenas de fábrica A Diatónica, B Séptimas, C Lo‑Fi Warm y D Jazz Tension.
+- Transformaciones temporales de color en las paletas Básica, Lo‑Fi y Spice, con persistencia explícita por grado.
+- Mapeo MIDI opcional: notas 36–42 para grados y CC 20–27 para colores; bajo separado en canal interno 2.
+- Parámetros APVTS para MIDI Performance y paleta de transformaciones.
+- Presets Default (Init), Warm Saw Chords, Ambient Open Keys, Arp Plucks y Jazz Tension alineados con las escenas musicales.
+
+### Cambiado
+- HarmonyState se serializa como versión 2 y migra datos v1 conservando los defaults legados.
+- Los presets JSON escriben schema 3 y mantienen carga compatible con schemas 1 y 2.
+- La carga de presets libera el acorde activo antes de sincronizar estado, interfaz y pads para evitar notas colgadas.
+
+### No incluido todavía
+- Tensiones alteradas `b9`, `#9`, `#11`, `b13` y `alt`.
+- MIDI Learn o base de nota MIDI configurable para el mapeo de grados.
+
+---
+
 ## [0.1.0] - 2026-08-20
 
 ### Añadido
@@ -27,6 +49,6 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
   - Serialización y deserialización JSON (`PresetSerializer`).
   - Migración retrocompatible automática para estados legados del host.
 - **Validación y CI:**
-  - Suite de 66 pruebas automatizadas con Catch2 (100% GREEN).
+  - Suite de pruebas automatizadas con Catch2.
   - Pruebas de seguridad offline, matrix de sample rates y soak testing.
   - GitHub Actions Workflow para build y test en Windows x64.

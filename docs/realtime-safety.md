@@ -1,47 +1,59 @@
-# Realtime Safety Guidelines and Verification
+# Seguridad en tiempo real y verificación
 
-## Core Realtime Safety Invariants
+## Invariantes de la ruta de audio
 
-In audio plugin development (VST3, Standalone, AU, CLAP), the audio rendering thread must execute deterministically within a strict time budget. Failure to do so leads to audio dropouts, glitches, buffer underruns, or host crashes.
+`processBlock` y `renderNextBlock` deben terminar de forma determinista dentro del presupuesto del host. La política del proyecto prohíbe introducir en la ruta de audio:
 
-### 1. Bounded Audio Callback (`processBlock`, `renderNextBlock`)
-- **No Dynamic Memory Allocation:** No calls to `malloc`, `free`, `new`, `delete`, or operations that resize containers (`std::vector::push_back`, `std::string` concatenation, `juce::Array::add`, etc.). All voice collections, buffers, FIFOs, and DSP state must be preallocated during `prepareToPlay` or object construction.
-- **No Blocking / Mutex Locks:** Never acquire standard mutexes (`std::mutex`, `juce::CriticalSection`) or wait on condition variables in the audio path. Shared data between UI and Audio threads must use wait-free, lock-free primitives (e.g., `std::atomic<float>` with `std::memory_order_relaxed`, lock-free FIFOs like `juce::AbstractFifo`).
-- **No I/O Operations:** No file reads/writes, logging, console printing, or network socket calls within the audio render path.
-- **Denormal Protection:** Always instantiate `juce::ScopedNoDenormals` at the beginning of `processBlock` to disable denormal floating point operations on x86/ARM hardware.
-- **Finite Output Guarantees:** All rendered output samples must be checked and guarded against `NaN`, `+Inf`, and `-Inf`. Parameter updates must sanitize non-finite or out-of-range floats before applying them to DSP filters or oscillators.
-- **Unused Channel Clearing:** Clear any excess or unconnected output channels (`buffer.clear(i, 0, buffer.getNumSamples())`).
+- Asignar/liberar memoria (`new`, `delete`, `malloc`, crecimiento de `std::vector`, `juce::Array::add`, concatenación de strings).
+- Locks, mutexes, esperas o llamadas bloqueantes.
+- I/O, archivos, red, parsing o logging.
+- Construir etiquetas o mensajes para la interfaz.
 
-### 2. Parameter Integration and State Migration
-- Host automation parameters are managed via `AudioProcessorValueTreeState` (APVTS).
-- Realtime threads access parameter values via atomic pointers obtained once during initialization (`getRawParameterValue`).
-- Smooth transitions for continuous parameters (e.g., filter cutoff, resonance, master gain) use `juce::SmoothedValue` or deterministic linear ramps to avoid clicks/zipper noise.
-- Complex state serialization/deserialization (JSON, XML) must happen strictly on the message/host thread (`getStateInformation`, `setStateInformation`), never inside `processBlock`.
+Las colecciones de voces, buffers, FIFOs y estado DSP deberían preasignarse en construcción o `prepareToPlay`. La implementación actual todavía tiene rutas a endurecer: al procesar MIDI Performance el voicer puede construir etiquetas y algunos `juce::MidiBuffer` pueden crecer al insertar eventos. `processBlock` inicia `juce::ScopedNoDenormals`, limpia canales de salida no usados y debe producir muestras finitas.
 
----
+## Parámetros y estado
 
-## Verification and Soak Testing Architecture
+APVTS ofrece parámetros host-automatizables estables. La ruta de audio obtiene punteros atómicos una vez y los lee con `memory_order_relaxed`. Los parámetros continuos se suavizan o sanitizan antes de afectar al DSP. JSON/XML, migraciones y persistencia se realizan fuera de la ruta de audio.
 
-ChordSynth includes an automated suite in `tests/dsp/RenderSafetyTests.cpp` validating:
+HarmonyState actual es v2 y Preset JSON actual es schema v3. La migración acepta estados/presets legados compatibles y aplica defaults explícitos; no ocurre parsing en `processBlock`.
 
-1. **Matrix of Supported Sample Rates and Block Sizes:**
-   - Sample rates: `44.1 kHz`, `48.0 kHz`, `96.0 kHz`.
-   - Block sizes: `1`, `16`, `64`, `256`, `512`, `1024` samples.
-   - Asserts finite output and bounded amplitudes across all combinations during silence, note-on, sustain, and note-off.
+## Rendimiento armónico y MIDI
 
-2. **Deterministic Soak Test (60 Seconds Offline Render):**
-   - Renders 11,250 consecutive blocks (at 48 kHz / 256 samples per block).
-   - Simulates randomized polyphonic Note-On, Note-Off, and runtime parameter automation driven by a deterministic fixed seed (`0xC001D00Du`).
-   - Asserts bit-exact sample determinism across independent processor instances with identical seeds.
-   - Asserts finite output (`isfinite`) and bounded polyphonic peak amplitude (`maxPeak <= 8.0f`).
+La generación de recetas, voicings, transformaciones, diferencias MIDI y mapeo MIDI persigue límites estrictos:
 
-3. **Extreme and Malformed Parameter Injection:**
-   - Injects boundary, negative, excessive, `+Inf`, `-Inf`, and `NaN` values directly into raw atomic parameter pointers during active polyphonic rendering.
-   - Verifies defensive clamping and fallback sanitization prevent filter blowup or oscillator hangs.
+- Como máximo seis tonos armónicos más un bajo opcional.
+- Arreglos fijos para candidatos, diferencias de re-voicing y lotes de eventos; una sustitución completa admite hasta catorce eventos.
+- No deben añadirse `std::vector`, locks ni asignaciones a voicing, transformaciones o `MidiPerformanceMapper`.
+- El mapper conserva un único acorde/grado mapeado activo y procesa note-off repetidos y CC 120/123 para prevenir notas colgadas. Las pulsaciones superpuestas no tienen todavía seguimiento de conteo independiente.
 
-4. **All-Notes-Off and Envelope Decay:**
-   - Verifies clean ADSR release decay after MIDI all-notes-off CC / message without hung voices or DC offsets.
+La interfaz comunica eventos por `UiMidiQueue`, una FIFO lock-free. El bajo generado se marca en canal interno 2 y se mezcla directamente; las voces armónicas generadas usan canal 1. Con el arpegiador activo el canal 2 evita el arpegiador; el MIDI externo de otros canales sigue la ruta normal del arpegiador.
 
-5. **Host Lifecycle Stress:**
-   - Repeated processor creation, preparation, rendering, and teardown across 50 consecutive cycles.
-   - State capture and restoration mid-playback without audio corruption or memory leaks.
+La carga de presets y los controles UI se ejecutan en el hilo de mensajes. Antes de modificar tonalidad, escala, escena o HarmonyState, la interfaz libera cualquier acorde activo. Así mantiene el ciclo de vida de notas correcto sin introducir locks en la ruta de audio.
+
+## Pruebas automatizadas
+
+`tests/dsp/RenderSafetyTests.cpp` cubre:
+
+1. Matriz de sample rates 44.1, 48 y 96 kHz, con bloques de 1, 16, 64, 256, 512 y 1024 muestras.
+2. Soak render determinista de 60 segundos a 48 kHz / 256 muestras con automatización y eventos polifónicos de semilla fija.
+3. Valores extremos, negativos, no finitos y fuera de rango para parámetros automatizados.
+4. All-notes-off, decaimiento ADSR y defensa contra voces colgadas.
+5. Creación, preparación, render y destrucción repetidas del procesador; guardar/restaurar estado durante el ciclo del host.
+
+La suite completa también cubre `MidiPerformanceMapper` y el enrutamiento de procesador que mantiene el bajo generado en canal 2 fuera del arpegiador.
+
+La prueba finita/no-crash por sí sola no es suficiente: los tests de automatización comparan procesadores deterministas alineados, los filtros se validan por energía tras transitorios y las rutas de enum inválidas deben comprobar el fallback documentado.
+
+## Gates locales y de Windows
+
+En Linux se deben ejecutar el build, los tests por tags pertinentes (por ejemplo `[music]`, `[interaction]`, `[state]`, `[presets]` y `[plugin]`), CTest completo, `git diff --check` y contratos de sintaxis UI. Los contratos de fuente/sintaxis no prueban el renderizado real de GUI ni la integración VST3.
+
+Antes de declarar la versión lista para entrega, en Windows se requiere:
+
+```powershell
+cmake --preset windows-msvc-release
+cmake --build --preset windows-msvc-release --config Release --parallel
+ctest --test-dir out/build/windows-msvc-release -C Release --output-on-failure
+```
+
+Después se realiza smoke manual de Standalone: escenas, todas las paletas, liberación al perder foco, teclas, MIDI note/CC, arpegiador con bajo separado, presets, proyecto guardado y ausencia de notas colgadas. El VST3 se valida adicionalmente en FL Studio/pluginval mediante las checklists del repositorio.
