@@ -1,4 +1,5 @@
 #include "interaction/ChordPerformanceController.h"
+#include "interaction/PerformanceVoicing.h"
 #include <algorithm>
 #include <array>
 
@@ -55,11 +56,10 @@ void ChordPerformanceController::setScene(int newSceneIndex) noexcept {
 }
 
 music::VoicingSpec ChordPerformanceController::getEffectiveBaseSpec(int sceneIndex, int degreeIndex) const noexcept {
-    auto spec = config.getSpec(sceneIndex, degreeIndex);
-    if (diatonicMode) {
-        spec.qualityRule = music::QualityRule::diatonic;
-    }
-    return spec;
+    return resolvePerformanceVoicingSpec(
+        config,
+        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = sceneIndex},
+        degreeIndex);
 }
 
 music::VoicedChord ChordPerformanceController::voiceForPerformance(
@@ -161,19 +161,12 @@ void ChordPerformanceController::revoiceActiveChordIfHeld(int degree) noexcept {
         return;
     }
 
-    if (activeTransform.has_value()) {
-        const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
-        const auto transformResult = applyChordTransform(
-            activeTransform->palette,
-            activeTransform->slot,
-            baseSpec,
-            scale,
-            degree);
-        const auto voiced = voiceForPerformance(degree, transformResult.spec);
-        sendVoicingDifferential(voiced);
-    } else {
-        applyLiveRevoicing(currentScene);
-    }
+    const auto spec = resolvePerformanceVoicingSpec(
+        config,
+        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = currentScene},
+        degree,
+        activeTransform);
+    sendVoicingDifferential(voiceForPerformance(degree, spec));
 }
 
 bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcept {
@@ -186,9 +179,11 @@ bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcep
         return true;
     }
 
-    activeTransform.reset();
-
-    const auto spec = getEffectiveBaseSpec(currentScene, degree);
+    const auto spec = resolvePerformanceVoicingSpec(
+        config,
+        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = currentScene},
+        degree,
+        activeTransform);
     const auto voiced = voiceForPerformance(degree, spec);
     const auto& newNotes = voiced.notes;
 
@@ -296,9 +291,13 @@ bool ChordPerformanceController::beginTransform(TransformPalette palette, Transf
     }
 
     const int degree = activeChord->degree;
-    const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
-    const auto transformResult = applyChordTransform(palette, slot, baseSpec, scale, degree);
-    const auto voiced = voiceForPerformance(degree, transformResult.spec);
+    const ActiveTransform transform{.palette = palette, .slot = slot};
+    const auto spec = resolvePerformanceVoicingSpec(
+        config,
+        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = currentScene},
+        degree,
+        transform);
+    const auto voiced = voiceForPerformance(degree, spec);
 
     if (!sendVoicingDifferential(voiced)) {
         return false;
@@ -331,15 +330,11 @@ std::optional<music::VoicingSpec> ChordPerformanceController::transformedSpecFor
     }
 
     const int degree = activeChord->degree;
-    const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
-    const auto result = applyChordTransform(
-        activeTransform->palette,
-        activeTransform->slot,
-        baseSpec,
-        scale,
-        degree);
-
-    return result.spec;
+    return resolvePerformanceVoicingSpec(
+        config,
+        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = currentScene},
+        degree,
+        activeTransform);
 }
 
 bool ChordPerformanceController::commitActiveTransform(music::HarmonyConfiguration& targetConfig) noexcept {

@@ -9,6 +9,7 @@
 #include "music/DiatonicChordVoicer.h"
 #include "music/VoiceLeadingResolver.h"
 #include "interaction/ChordTransform.h"
+#include "interaction/PerformanceVoicing.h"
 #include "dsp/UiMidiQueue.h"
 
 namespace chordsynth::interaction {
@@ -37,12 +38,7 @@ struct ActiveChord {
     int midiChannel{1};
 };
 
-struct ActiveTransform {
-    TransformPalette palette{TransformPalette::basic};
-    TransformSlot slot{TransformSlot::one};
-
-    constexpr bool operator==(const ActiveTransform& other) const noexcept = default;
-};
+using ActiveTransform = TransformSelection;
 
 class ChordPerformanceController {
 public:

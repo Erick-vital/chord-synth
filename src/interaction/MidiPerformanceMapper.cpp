@@ -1,4 +1,5 @@
 #include "interaction/MidiPerformanceMapper.h"
+#include "interaction/PerformanceVoicing.h"
 #include <algorithm>
 #include <limits>
 
@@ -41,25 +42,15 @@ void MidiPerformanceMapper::reset() noexcept {
     scratchBuffer.clear();
 }
 
-music::VoicingSpec MidiPerformanceMapper::getEffectiveBaseSpec(int sceneIndex, int degreeIndex) const noexcept {
-    auto spec = config.getSpec(sceneIndex, degreeIndex);
-    if (context.diatonicMode) {
-        spec.qualityRule = music::QualityRule::diatonic;
-    }
-    return spec;
-}
-
 music::RealtimeVoicedChord MidiPerformanceMapper::computeCurrentVoicing(int degree) const noexcept {
-    auto spec = getEffectiveBaseSpec(context.sceneIndex, degree);
-    if (activeTransformSlot.has_value()) {
-        const auto transformResult = applyChordTransform(
-            context.palette,
-            *activeTransformSlot,
-            spec,
-            context.scale,
-            degree);
-        spec = transformResult.spec;
-    }
+    const auto transform = activeTransformSlot.has_value()
+        ? std::optional<TransformSelection>{TransformSelection{.palette = context.palette, .slot = *activeTransformSlot}}
+        : std::nullopt;
+    const auto spec = resolvePerformanceVoicingSpec(
+        config,
+        {.scale = context.scale, .diatonicMode = context.diatonicMode, .sceneIndex = context.sceneIndex},
+        degree,
+        transform);
     auto voiced = voicer.voiceChordRealtime(context.tonic, degree, spec, context.scale);
     if (spec.voiceLeading == music::VoiceLeadingMode::nearest && !activeHarmonicNotes.empty()) {
         voiced.notes = music::VoiceLeadingResolver::resolveNearestVoiceLeading(

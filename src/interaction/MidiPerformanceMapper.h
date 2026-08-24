@@ -67,7 +67,6 @@ private:
         int sampleOffset,
         juce::MidiBuffer& outputMidi) noexcept;
 
-    [[nodiscard]] music::VoicingSpec getEffectiveBaseSpec(int sceneIndex, int degreeIndex) const noexcept;
     [[nodiscard]] music::RealtimeVoicedChord computeCurrentVoicing(int degree) const noexcept;
 
     const music::HarmonyConfiguration& config;

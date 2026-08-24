@@ -606,6 +606,25 @@ TEST_CASE("ChordPerformanceController temporary transform lifecycle", "[interact
         REQUIRE_FALSE(controller.getActiveChord().has_value());
     }
 
+    SECTION("A held transform applies when its chord is pressed afterwards and survives a degree change") {
+        // A performer may hold a color key before pressing any chord key.
+        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
+        REQUIRE(controller.hasActiveTransform());
+        REQUIRE_FALSE(controller.getActiveChord().has_value());
+
+        REQUIRE(controller.pressDegree(0, 0.8f));
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({48, 51, 55}, 3)); // C minor
+        REQUIRE(controller.hasActiveTransform());
+
+        output.pushedMessages.clear();
+        // Keeping the color key held must apply it to the next degree too.
+        REQUIRE(controller.pressDegree(1, 0.8f));
+        REQUIRE(controller.getActiveChord()->degree == 1);
+        REQUIRE(controller.getActiveChord()->notes == music::NoteSet({50, 54, 57}, 3)); // D major after Flip (M/m)
+        REQUIRE(controller.hasActiveTransform());
+        REQUIRE(output.pushedMessages.size() == 6);
+    }
+
     SECTION("Scene, tonic, or scale change ends active transform safely") {
         REQUIRE(controller.pressDegree(0, 0.8f));
         REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
