@@ -158,7 +158,6 @@ void MidiPerformanceMapper::handleDegreeNoteOn(
         return;
     }
 
-    activeTransformSlot.reset();
     activeDegree = degree;
     activeVelocity = velocity;
 
@@ -196,7 +195,6 @@ void MidiPerformanceMapper::handleDegreeNoteOff(
 
     if (fallbackDegree >= 0) {
         activeDegree = fallbackDegree;
-        activeTransformSlot.reset();
         activeVelocity = degreeVelocities[static_cast<std::size_t>(fallbackDegree)];
         const auto voiced = computeCurrentVoicing(fallbackDegree);
         sendDifferentialVoicing(voiced, activeVelocity, sampleOffset, outputMidi);

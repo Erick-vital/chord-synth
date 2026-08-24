@@ -285,6 +285,48 @@ TEST_CASE("MidiPerformanceMapper CC 20-27 applies temporary chord transforms wit
     REQUIRE(events.empty());
 }
 
+TEST_CASE("MidiPerformanceMapper keeps a held transform across degree presses and fallback", "[interaction][midi_mapper]") {
+    HarmonyConfiguration config;
+    DiatonicChordVoicer voicer;
+    MidiPerformanceMapper mapper(config, voicer);
+    mapper.setEnabled(true);
+    mapper.setContext({
+        .tonic = 0,
+        .scale = Scale::major,
+        .diatonicMode = true,
+        .sceneIndex = 0,
+        .palette = TransformPalette::basic
+    });
+
+    juce::MidiBuffer input;
+    juce::MidiBuffer output;
+
+    // A held CC transform must affect a chord played after the CC.
+    input.addEvent(juce::MidiMessage::controllerEvent(1, 20, 127), 0);
+    input.addEvent(juce::MidiMessage::noteOn(1, 36, 0.8f), 1);
+    mapper.processBlock(input, output, 64);
+    REQUIRE(mapper.getActiveTransformSlot() == TransformSlot::one);
+    REQUIRE(mapper.getActiveHarmonicNotes() == NoteSet({48, 51, 55}, 3)); // C minor
+
+    // Keeping the CC held applies the same transform to the next degree.
+    input.clear();
+    output.clear();
+    input.addEvent(juce::MidiMessage::noteOn(1, 37, 0.8f), 2);
+    mapper.processBlock(input, output, 64);
+    REQUIRE(mapper.getActiveDegree() == 1);
+    REQUIRE(mapper.getActiveTransformSlot() == TransformSlot::one);
+    REQUIRE(mapper.getActiveHarmonicNotes() == NoteSet({50, 54, 57}, 3)); // D major
+
+    // Releasing the newer degree returns to the still-held prior degree with its transform.
+    input.clear();
+    output.clear();
+    input.addEvent(juce::MidiMessage::noteOff(1, 37), 3);
+    mapper.processBlock(input, output, 64);
+    REQUIRE(mapper.getActiveDegree() == 0);
+    REQUIRE(mapper.getActiveTransformSlot() == TransformSlot::one);
+    REQUIRE(mapper.getActiveHarmonicNotes() == NoteSet({48, 51, 55}, 3)); // C minor
+}
+
 TEST_CASE("MidiPerformanceMapper all-notes-off and reset clears active notes safely", "[interaction][midi_mapper]") {
     HarmonyConfiguration config;
     DiatonicChordVoicer voicer;
