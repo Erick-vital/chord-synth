@@ -62,12 +62,12 @@ TEST_CASE("Production PluginEditor instantiates full performance interface", "[g
         REQUIRE(keyComp != nullptr);
     }
 
-    // Four scene buttons scene-0 to scene-3
+    // Four scene buttons scene-0 to scene-3 must be absent in scene-free model
     for (int scene = 0; scene < 4; ++scene) {
         juce::String sceneId = "scene-" + juce::String(scene);
         auto* sceneBtn = findDescendantWithID(*editor, sceneId);
-        INFO("Checking presence of " << sceneId.toStdString());
-        REQUIRE(sceneBtn != nullptr);
+        INFO("Checking absence of " << sceneId.toStdString());
+        REQUIRE(sceneBtn == nullptr);
     }
 
     // Essential controls: key, waveform, cutoff

@@ -20,12 +20,15 @@ add_executable(ChordSynthTests
     music/MajorScaleChordMapTests.cpp
     music/MusicalClockTests.cpp
     music/NoteMathTests.cpp
+    music/SceneFreeHarmonyConfigurationTests.cpp
     music/VoicedChordTests.cpp
     music/VoiceLeadingResolverTests.cpp
     parameters/ParameterLayoutTests.cpp
     plugin/ProcessorSmokeTests.cpp
     presets/PresetSerializerTests.cpp
-    state/HarmonyStateTests.cpp)
+    presets/SceneFreePresetSerializerTests.cpp
+    state/HarmonyStateTests.cpp
+    state/SceneFreeMigrationTests.cpp)
 
 target_link_libraries(ChordSynthTests PRIVATE
     chordsynth_plugin
