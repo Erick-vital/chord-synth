@@ -319,7 +319,6 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         const int tonic = std::clamp(static_cast<int>(rawKey), 0, 11);
         const auto scale = rawScale >= 0.5f ? music::Scale::naturalMinor : music::Scale::major;
         const bool isDiatonic = (harmonyState.getQualityRule() == music::QualityRule::diatonic);
-        const int scene = harmonyState.getSelectedScene();
         const int palIdx = std::clamp(static_cast<int>(rawPalette), 0, 2);
         auto pal = interaction::TransformPalette::loFi;
         if (palIdx == 0) pal = interaction::TransformPalette::basic;
@@ -329,7 +328,6 @@ void ChordSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
             .tonic = tonic,
             .scale = scale,
             .diatonicMode = isDiatonic,
-            .sceneIndex = scene,
             .palette = pal
         });
 

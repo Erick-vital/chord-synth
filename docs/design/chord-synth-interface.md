@@ -11,9 +11,9 @@ ChordSynth debe abrir como un instrumento inmediatamente interpretable: el usuar
 ## Jerarquía de la pantalla
 
 1. **Contexto armónico:** tonalidad, escala y regla diatónica/libre.
-2. **Interpretación:** cuatro escenas de voicing y un teclado de siete acordes.
+2. **Interpretación:** teclado de siete acordes y control de re-voicing sostenido.
 3. **Estado actual:** acorde y notas que están sonando.
-4. **Diseño por grado:** extensión, inversión, distribución y registro del grado seleccionado.
+4. **Diseño por grado:** extensión, inversión, distribución, bajo, política de quinta y registro del grado seleccionado.
 5. **Timbre y movimiento:** oscilador, filtro, arpegiador y efectos.
 6. **Infraestructura:** preset y configuración Audio/MIDI, fuera del flujo musical principal.
 
@@ -25,20 +25,20 @@ Fuentes de interacción:
 
 - puntero/touch: `pointerDown` produce note-on; `pointerUp`, cancelación, pérdida de foco y destrucción producen los note-off exactos;
 - teclado del ordenador: `Q W E R T Y U`;
-- MIDI externo: permanece cromático en el procesador inicialmente; el mapeo MIDI por grados es una evolución separada.
+- MIDI externo: permanece cromático en el procesador inicialmente o se mapea a grados con MIDI Perf activado.
 
-## Voicing interactivo
+## Voicing interactivo y presets
 
-Las escenas `A–D` se seleccionan con botones o teclas `1–4`:
+ChordSynth maneja una configuración editable de siete grados por preset. Las recetas de fábrica se acceden mediante los presets incorporados o configurando manualmente cada grado:
 
-- **A — Triadas:** posición raíz cerrada;
-- **B — Séptimas:** calidad diatónica del séptimo acorde;
-- **C — Abierto:** distribución raíz–quinta–tercera elevada;
-- **D — Inversiones:** primera inversión como punto de partida para voice leading.
+- **Init / Diatónica:** tríadas en posición raíz cerrada;
+- **Séptimas:** calidad diatónica del séptimo acorde en posición compacta;
+- **Lo‑Fi Warm:** novenas y trecenas con distribución abierta y bajo raíz;
+- **Jazz Tension:** extensiones rootless con bajo raíz.
 
-Comportamiento predeterminado: una escena nueva afecta al siguiente acorde. No altera un acorde sostenido, evitando cortes sorpresivos.
+Comportamiento predeterminado: editar un grado en el diseñador afecta al siguiente acorde disparado. No altera un acorde sostenido, evitando cortes sorpresivos.
 
-Con **Re-voicing del acorde sostenido** activado, cambiar de escena calcula la diferencia entre las notas anteriores y nuevas:
+Con **Re-voicing del acorde sostenido** activado, modificar el grado sostenido calcula la diferencia entre las notas anteriores y nuevas:
 
 - conserva notas comunes;
 - envía note-off solo para notas eliminadas;
@@ -86,8 +86,8 @@ La UI no calcula teoría musical ni toca el sintetizador directamente:
 1. Abrir Standalone muestra las siete teclas sin abrir menús.
 2. En C mayor, mantener `I` produce C–E–G y soltar libera exactamente esas notas.
 3. `Q–U` replica las siete teclas y no deja notas colgadas al perder foco.
-4. Elegir Séptimas y tocar `V` produce G–B–D–F.
-5. Cambiar de escena mientras se sostiene un acorde no lo modifica por defecto.
+4. Tocar en modo Séptimas o con preset de séptimas produce las extensiones esperadas (ej. `V` produce G–B–D–F en C mayor).
+5. Modificar un grado mientras se sostiene un acorde no lo modifica por defecto hasta el siguiente disparo.
 6. Con re-voicing activo, el cambio conserva notas comunes y no duplica note-ons.
 7. Tonalidad, parámetros de sonido y configuración armónica sobreviven al guardado/restauración.
 8. Standalone y VST3 muestran la misma interfaz y comportamiento musical.

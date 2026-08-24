@@ -59,9 +59,6 @@ public:
     void setDiatonicMode(bool enabled) noexcept;
     [[nodiscard]] bool isDiatonicMode() const noexcept { return diatonicMode; }
 
-    void setScene(int newSceneIndex) noexcept;
-    [[nodiscard]] int getScene() const noexcept { return currentScene; }
-
     void setLiveRevoice(bool enabled) noexcept { liveRevoice = enabled; }
     [[nodiscard]] bool getLiveRevoice() const noexcept { return liveRevoice; }
 
@@ -94,12 +91,11 @@ public:
     }
 
 private:
-    void applyLiveRevoicing(int targetScene) noexcept;
     bool sendVoicingDifferential(const music::VoicedChord& voiced) noexcept;
     [[nodiscard]] music::VoicedChord voiceForPerformance(
         int degree,
         const music::VoicingSpec& spec) const noexcept;
-    [[nodiscard]] music::VoicingSpec getEffectiveBaseSpec(int sceneIndex, int degreeIndex) const noexcept;
+    [[nodiscard]] music::VoicingSpec getEffectiveBaseSpec(int degreeIndex) const noexcept;
 
     const music::HarmonyConfiguration& config;
     const music::DiatonicChordVoicer& voicer;
@@ -108,7 +104,6 @@ private:
     int tonic{0}; // 0 = C
     music::Scale scale{music::Scale::major};
     bool diatonicMode{true};
-    int currentScene{0}; // 0..3 (A..D)
     bool liveRevoice{false};
     int midiChannel{1};
 

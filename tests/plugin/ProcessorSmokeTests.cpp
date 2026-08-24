@@ -547,7 +547,6 @@ TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip 
         REQUIRE(cutoff != nullptr);
         *cutoff = 2400.0f;
 
-        sourceProcessor.getHarmonyState().setSelectedScene(2);
         sourceProcessor.getHarmonyState().setLiveRevoice(true);
         sourceProcessor.getHarmonyState().setQualityRule(music::QualityRule::minor);
         music::VoicingSpec customSpec{
@@ -557,7 +556,7 @@ TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip 
             .baseOctave = 4,
             .qualityRule = music::QualityRule::major
         };
-        sourceProcessor.getHarmonyState().getConfiguration().setSpec(2, 3, customSpec); // Scene 2, IV
+        sourceProcessor.getHarmonyState().getConfiguration().setSpec(3, customSpec); // IV
 
         juce::MemoryBlock block;
         sourceProcessor.getStateInformation(block);
@@ -572,27 +571,27 @@ TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip 
         REQUIRE(static_cast<float>(*targetCutoff) == Catch::Approx(2400.0f));
 
         const auto& restoredHarmony = targetProcessor.getHarmonyState();
-        REQUIRE(restoredHarmony.getSelectedScene() == 2);
         REQUIRE(restoredHarmony.getLiveRevoice() == true);
         REQUIRE(restoredHarmony.getQualityRule() == music::QualityRule::minor);
-        REQUIRE(restoredHarmony.getConfiguration().getSpec(2, 3) == customSpec);
+        REQUIRE(restoredHarmony.getConfiguration().getSpec(3) == customSpec);
     }
 
-    SECTION("Legacy APVTS state without HarmonyState resets conflicting target state to explicit defaults") {
-        // Build a legacy APVTS state with no HarmonyState child node
-        juce::ValueTree legacyTree{parameters::stateRootType};
-        juce::ValueTree paramCutoff{"PARAM"};
-        paramCutoff.setProperty("id", parameters::ids::cutoff, nullptr);
-        paramCutoff.setProperty("value", 5500.0f, nullptr);
-        legacyTree.appendChild(paramCutoff, nullptr);
+    SECTION("Legacy APVTS XML state without HarmonyState restores default HarmonyState without errors") {
+        ChordSynthAudioProcessor source;
+        auto* sourceCutoff = dynamic_cast<juce::AudioParameterFloat*>(
+            source.getAPVTS().getParameter(parameters::ids::cutoff));
+        REQUIRE(sourceCutoff != nullptr);
+        *sourceCutoff = 850.0f;
 
-        std::unique_ptr<juce::XmlElement> xml(legacyTree.createXml());
+        auto legacyState = source.getAPVTS().copyState();
+        std::unique_ptr<juce::XmlElement> xml(legacyState.createXml());
+        REQUIRE(xml != nullptr);
+
         juce::MemoryBlock legacyBlock;
         ChordSynthAudioProcessor::copyXmlToBinary(*xml, legacyBlock);
 
         // Configure target processor with conflicting non-default harmony state
         ChordSynthAudioProcessor targetProcessor;
-        targetProcessor.getHarmonyState().setSelectedScene(3);
         targetProcessor.getHarmonyState().setLiveRevoice(true);
         targetProcessor.getHarmonyState().setQualityRule(music::QualityRule::diminished);
         music::VoicingSpec nonDefaultSpec{
@@ -602,31 +601,29 @@ TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip 
             .baseOctave = 2,
             .qualityRule = music::QualityRule::minor
         };
-        targetProcessor.getHarmonyState().getConfiguration().setSpec(3, 0, nonDefaultSpec);
+        targetProcessor.getHarmonyState().getConfiguration().setSpec(0, nonDefaultSpec);
 
         targetProcessor.setStateInformation(legacyBlock.getData(), static_cast<int>(legacyBlock.getSize()));
 
-        // Check that legacy parameter was restored
         auto* targetCutoff = dynamic_cast<juce::AudioParameterFloat*>(
             targetProcessor.getAPVTS().getParameter(parameters::ids::cutoff));
         REQUIRE(targetCutoff != nullptr);
-        REQUIRE(static_cast<float>(*targetCutoff) == Catch::Approx(5500.0f));
+        REQUIRE(static_cast<float>(*targetCutoff) == Catch::Approx(850.0f));
 
-        // Check that harmony state migrated to clean defaults
+        // State without HarmonyState child safely resets to defaults
         const auto& restoredHarmony = targetProcessor.getHarmonyState();
-        REQUIRE(restoredHarmony.getSelectedScene() == 0);
-        REQUIRE(restoredHarmony.getLiveRevoice() == false);
+        REQUIRE_FALSE(restoredHarmony.getLiveRevoice());
         REQUIRE(restoredHarmony.getQualityRule() == music::QualityRule::diatonic);
         REQUIRE(restoredHarmony.getConfiguration() == music::HarmonyConfiguration{});
     }
 
     SECTION("Corrupted or malformed state is rejected and does not corrupt processor state") {
         ChordSynthAudioProcessor targetProcessor;
-        targetProcessor.getHarmonyState().setSelectedScene(1);
+        targetProcessor.getHarmonyState().setLiveRevoice(true);
 
         // Null / zero size
         targetProcessor.setStateInformation(nullptr, 0);
-        REQUIRE(targetProcessor.getHarmonyState().getSelectedScene() == 1);
+        REQUIRE(targetProcessor.getHarmonyState().getLiveRevoice() == true);
 
         // Wrong root type XML
         juce::ValueTree badRoot{"WrongRoot"};
@@ -634,7 +631,7 @@ TEST_CASE("PluginProcessor persists and restores HarmonyState across round-trip 
         juce::MemoryBlock badBlock;
         ChordSynthAudioProcessor::copyXmlToBinary(*xml, badBlock);
         targetProcessor.setStateInformation(badBlock.getData(), static_cast<int>(badBlock.getSize()));
-        REQUIRE(targetProcessor.getHarmonyState().getSelectedScene() == 1);
+        REQUIRE(targetProcessor.getHarmonyState().getLiveRevoice() == true);
     }
 }
 
@@ -677,8 +674,10 @@ TEST_CASE("MIDI Performance processor routing maps notes 36-42 and routes bass o
     }
 
     SECTION("When both Arpeggiator and MIDI Performance are enabled, bass on ch 2 bypasses arp while chord arpeggiates") {
-        // Scene 1: B Séptimas has root bass enabled for Degree 0 (I)
-        procEnabled.getHarmonyState().setSelectedScene(1);
+        // Degree 0 (I) configured with root bass enabled
+        music::VoicingSpec rootBassSpec;
+        rootBassSpec.bassMode = music::BassMode::root;
+        procEnabled.getHarmonyState().getConfiguration().setSpec(0, rootBassSpec);
 
         auto* arpParam = dynamic_cast<juce::AudioParameterBool*>(
             procEnabled.getAPVTS().getParameter(parameters::ids::arpEnabled));

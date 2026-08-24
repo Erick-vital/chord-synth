@@ -92,8 +92,8 @@ TEST_CASE("MidiPerformanceMapper disabled mode passes all MIDI unchanged", "[int
 
 TEST_CASE("MidiPerformanceMapper enabled maps notes 36-42 to degrees 0-6 with bass on ch 2", "[interaction][midi_mapper]") {
     HarmonyConfiguration config;
-    // Scene A: Diatónica (triads, compact, manual leading, no bass)
-    // Degree 0 (I) in C major = C4, E4, G4 (MIDI 60, 64, 67)
+    // Diatónica default: (triads, compact, manual leading, no bass)
+    // Degree 0 (I) in C major = C3, E3, G3 (MIDI 48, 52, 55)
     DiatonicChordVoicer voicer;
     MidiPerformanceMapper mapper(config, voicer);
 
@@ -104,7 +104,6 @@ TEST_CASE("MidiPerformanceMapper enabled maps notes 36-42 to degrees 0-6 with ba
         .tonic = 0,
         .scale = Scale::major,
         .diatonicMode = true,
-        .sceneIndex = 0, // Scene A
         .palette = TransformPalette::loFi
     };
     mapper.setContext(ctx);
@@ -120,7 +119,7 @@ TEST_CASE("MidiPerformanceMapper enabled maps notes 36-42 to degrees 0-6 with ba
         REQUIRE(mapper.getActiveDegree() == 0);
 
         auto events = parseMidiBuffer(output);
-        REQUIRE(events.size() == 3); // C4, E4, G4
+        REQUIRE(events.size() == 3); // C3, E3, G3
         for (const auto& ev : events) {
             REQUIRE(ev.channel == 1);
             REQUIRE(ev.isNoteOn);
@@ -147,15 +146,17 @@ TEST_CASE("MidiPerformanceMapper enabled maps notes 36-42 to degrees 0-6 with ba
         }
     }
 
-    SECTION("Scene C Lo-Fi Warm triggers separate bass on channel 2") {
-        ctx.sceneIndex = 2; // Scene C has Root bass
-        mapper.setContext(ctx);
+    SECTION("Lo-Fi Warm factory triggers separate bass on channel 2") {
+        auto lofiConfig = HarmonyConfiguration::makeLofiWarm();
+        MidiPerformanceMapper lofiMapper(lofiConfig, voicer);
+        lofiMapper.setEnabled(true);
+        lofiMapper.setContext(ctx);
 
         juce::MidiBuffer input;
         input.addEvent(juce::MidiMessage::noteOn(1, 36, 0.75f), 0);
 
         juce::MidiBuffer output;
-        mapper.processBlock(input, output, 64);
+        lofiMapper.processBlock(input, output, 64);
 
         auto events = parseMidiBuffer(output);
         // Harmonic notes on channel 1, Bass on channel 2
@@ -176,7 +177,7 @@ TEST_CASE("MidiPerformanceMapper enabled maps notes 36-42 to degrees 0-6 with ba
         input.clear();
         input.addEvent(juce::MidiMessage::noteOff(1, 36, 0.0f), 10);
         output.clear();
-        mapper.processBlock(input, output, 64);
+        lofiMapper.processBlock(input, output, 64);
 
         events = parseMidiBuffer(output);
         bool offCh1 = false;
@@ -225,7 +226,6 @@ TEST_CASE("MidiPerformanceMapper CC 20-27 applies temporary chord transforms wit
         .tonic = 0,
         .scale = Scale::major,
         .diatonicMode = true,
-        .sceneIndex = 0, // Scene A: Triads
         .palette = TransformPalette::basic
     };
     mapper.setContext(ctx);
@@ -294,7 +294,6 @@ TEST_CASE("MidiPerformanceMapper keeps a held transform across degree presses an
         .tonic = 0,
         .scale = Scale::major,
         .diatonicMode = true,
-        .sceneIndex = 0,
         .palette = TransformPalette::basic
     });
 
@@ -328,7 +327,7 @@ TEST_CASE("MidiPerformanceMapper keeps a held transform across degree presses an
 }
 
 TEST_CASE("MidiPerformanceMapper all-notes-off and reset clears active notes safely", "[interaction][midi_mapper]") {
-    HarmonyConfiguration config;
+    auto config = HarmonyConfiguration::makeLofiWarm();
     DiatonicChordVoicer voicer;
     MidiPerformanceMapper mapper(config, voicer);
     mapper.setEnabled(true);
@@ -337,7 +336,6 @@ TEST_CASE("MidiPerformanceMapper all-notes-off and reset clears active notes saf
         .tonic = 0,
         .scale = Scale::major,
         .diatonicMode = true,
-        .sceneIndex = 2, // Scene C (Harmonic notes + bass)
         .palette = TransformPalette::loFi
     };
     mapper.setContext(ctx);
@@ -416,7 +414,7 @@ TEST_CASE("MidiPerformanceMapper repeated and overlapping degree notes retain tr
 }
 
 TEST_CASE("MidiPerformanceMapper applies nearest voice leading from sounding notes", "[interaction][midi_mapper]") {
-    HarmonyConfiguration config;
+    auto config = HarmonyConfiguration::makeSevenths();
     DiatonicChordVoicer voicer;
     MidiPerformanceMapper mapper(config, voicer);
     mapper.setEnabled(true);
@@ -424,7 +422,6 @@ TEST_CASE("MidiPerformanceMapper applies nearest voice leading from sounding not
         .tonic = 0,
         .scale = Scale::major,
         .diatonicMode = true,
-        .sceneIndex = 1,
         .palette = TransformPalette::loFi
     });
 
@@ -434,7 +431,7 @@ TEST_CASE("MidiPerformanceMapper applies nearest voice leading from sounding not
     mapper.processBlock(input, output, 64);
     const auto previous = mapper.getActiveHarmonicNotes();
 
-    const auto spec = config.getSpec(1, 0);
+    const auto spec = config.getSpec(0);
     const auto defaultTarget = voicer.voiceChord(0, 0, spec, Scale::major).notes;
     const auto nearestTarget = VoiceLeadingResolver::resolveNearestVoiceLeading(previous, defaultTarget);
     REQUIRE(nearestTarget != defaultTarget);

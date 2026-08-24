@@ -60,4 +60,14 @@ TEST_CASE("SceneFreeHarmonyState migration and serialization", "[state][harmony]
         REQUIRE_FALSE(v3Tree.getChildWithName("Scenes").isValid());
         REQUIRE(v3Tree.getChildWithName("Degrees").isValid());
     }
+
+    SECTION("Legacy v2 state with missing Scenes node populates clean defaults") {
+        juce::ValueTree v2NoScenes{"HarmonyState"};
+        v2NoScenes.setProperty("version", 2, nullptr);
+        v2NoScenes.setProperty("selectedScene", 1, nullptr);
+
+        HarmonyState restored;
+        REQUIRE(restored.loadFromValueTree(v2NoScenes));
+        REQUIRE(restored.getConfiguration() == HarmonyConfiguration{});
+    }
 }

@@ -20,13 +20,11 @@ ChordDesignerPanel::ChordDesignerPanel(
     const music::DiatonicChordVoicer& chordVoicer,
     std::function<int()> getTonicCallback,
     std::function<music::Scale()> getScaleCallback,
-    std::function<int()> getSceneCallback,
-    std::function<void(int scene, int degree)> onSpecSavedCallback)
+    std::function<void(int degree)> onSpecSavedCallback)
     : config(harmonyConfig),
       voicer(chordVoicer),
       getTonic(std::move(getTonicCallback)),
       getScale(std::move(getScaleCallback)),
-      getScene(std::move(getSceneCallback)),
       onSpecSaved(std::move(onSpecSavedCallback))
 {
     // Panel Header
@@ -208,14 +206,14 @@ ChordDesignerPanel::ChordDesignerPanel(
     saveButton.setColour(juce::TextButton::textColourOnId, colors::accentInk);
     saveButton.onClick = [this]() {
         const auto newSpec = buildSpecFromControls();
-        config.setSpec(currentScene, currentDegree, newSpec);
+        config.setSpec(currentDegree, newSpec);
 
         isSavedFlashActive = true;
         saveButton.setButtonText(utf8("Guardado \xe2\x9c\x93"));
         startTimer(900);
 
         if (onSpecSaved) {
-            onSpecSaved(currentScene, currentDegree);
+            onSpecSaved(currentDegree);
         }
         updatePreview();
     };
@@ -224,10 +222,10 @@ ChordDesignerPanel::ChordDesignerPanel(
     resetButton.setColour(juce::TextButton::buttonColourId, colors::panelSecondary);
     resetButton.setColour(juce::TextButton::textColourOffId, colors::text);
     resetButton.onClick = [this]() {
-        config.resetDegree(currentScene, currentDegree);
+        config.resetDegree(currentDegree);
         refresh();
         if (onSpecSaved) {
-            onSpecSaved(currentScene, currentDegree);
+            onSpecSaved(currentDegree);
         }
     };
     addAndMakeVisible(resetButton);
@@ -266,13 +264,6 @@ void ChordDesignerPanel::setSelectedDegree(int degreeIndex)
     refresh();
 }
 
-void ChordDesignerPanel::setSelectedScene(int sceneIndex)
-{
-    if (sceneIndex < 0 || sceneIndex > 3) return;
-    currentScene = sceneIndex;
-    refresh();
-}
-
 void ChordDesignerPanel::setRuleMode(bool isFreeMode)
 {
     freeMode = isFreeMode;
@@ -296,13 +287,9 @@ void ChordDesignerPanel::setRuleMode(bool isFreeMode)
 
 void ChordDesignerPanel::refresh()
 {
-    if (getScene) {
-        currentScene = getScene();
-    }
-
     updateSlashDegreeItems();
 
-    const auto spec = config.getSpec(currentScene, currentDegree);
+    const auto spec = config.getSpec(currentDegree);
     syncControlsWithSpec(spec);
     updatePreview();
 }

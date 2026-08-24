@@ -39,7 +39,7 @@ struct PresetParameters {
 };
 
 struct Preset {
-    int schemaVersion{4};
+    int schemaVersion{5};
     juce::String name{"Default"};
     PresetParameters parameters;
     state::HarmonyState harmony;

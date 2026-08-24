@@ -2,7 +2,7 @@
 
 ChordSynth es un instrumento de acordes polifónico para explorar, tocar y producir progresiones con rapidez. Está construido en C++20 con JUCE y comparte el mismo motor musical entre la aplicación Standalone y el plugin VST3.
 
-En lugar de construir cada acorde nota por nota, ChordSynth presenta siete grados diatónicos para la tonalidad y escala elegidas. Puedes tocar una progresión de inmediato, seleccionar una escena musical o diseñar el voicing de cada grado.
+En lugar de construir cada acorde nota por nota, ChordSynth presenta siete grados diatónicos para la tonalidad y escala elegidas. Puedes tocar una progresión de inmediato, diseñar el voicing de cada grado o cargar presets con configuraciones de fábrica como Lo‑Fi Warm y Jazz Tension.
 
 ## Funciones principales
 
@@ -10,13 +10,13 @@ En lugar de construir cada acorde nota por nota, ChordSynth presenta siete grado
 - **Tonalidad y escala:** doce tonalidades, Mayor y Menor natural.
 - **Recetas de acordes:** tríada, 7, 9, 11, 13, add9, 6/9, sus2 y sus4; `add9`, `maj9` y dominante 9 tienen identidades diferentes.
 - **Voicings musicales:** compacto, abierto y rootless, con política de quinta, bajo raíz/slash, registro seguro y nearest voice leading determinista.
-- **Cuatro escenas:** A Diatónica, B Séptimas, C Lo‑Fi Warm y D Jazz Tension; sus defaults son datos por grado y se adaptan a la escala.
+- **Configuración de voicing por grado:** edición independiente por cada grado I–vii° y presets de fábrica (Init Diatónica, Séptimas, Lo‑Fi Warm y Jazz Tension).
 - **Chord Color:** tres paletas de transformaciones temporales (Básica, Lo‑Fi y Spice), que pueden fijarse explícitamente en el grado activo.
 - **MIDI Performance opcional:** notas MIDI 36–42 disparan grados; CC 20–27 controlan colores. El MIDI no mapeado conserva sus eventos originales.
 - **Bajo y arpegiador separados:** armonía en canal interno 1 y bajo en canal 2; el arpegiador no arpegia el bajo.
 - **Síntesis polifónica:** 16 voces estéreo, envolventes anti-click, osciladores Sine/Saw/Square/Triangle, detune y filtro low-pass resonante.
 - **Arpegiador y efectos:** Up/Down/Up-Down/Random, chorus, delay libre o sincronizado y reverb.
-- **Presets y estado persistente:** HarmonyState v2 y presets JSON schema 4 con migración compatible de versiones anteriores.
+- **Presets y estado persistente:** HarmonyState v3 y presets JSON schema 5 de configuración única por preset con migración compatible de versiones anteriores (v1/v2 y schemas 1–4).
 - **Standalone y VST3:** un mismo motor en ambos formatos.
 
 ## Uso rápido
@@ -31,21 +31,14 @@ En lugar de construir cada acorde nota por nota, ChordSynth presenta siete grado
    ```
 
    Mantén la tecla para sostener el acorde; suéltala para liberar las mismas notas.
-4. Cambia de escena con `1`–`4`:
-
-   - A: Diatónica, tríadas compactas.
-   - B: Séptimas diatónicas compactas.
-   - C: Lo‑Fi Warm, extensiones abiertas con bajo raíz.
-   - D: Jazz Tension, extensiones rootless con bajo raíz.
-
-5. Mantén `A S D F G H J K` para aplicar los ocho colores de la paleta seleccionada. **Fijar en grado** persiste la transformación; soltar el color restaura la base si no la fijaste.
-6. Selecciona un grado para abrir **Diseñar acorde** y editar forma, calidad, voicing, quinta, bajo, voz guía, inversión y registro.
-7. En **Sonido y movimiento**, ajusta forma de onda, detune, filtro, arpegiador y efectos.
-8. Selecciona un preset. La carga libera el acorde activo y sincroniza la escena, los pads y el diseñador.
+4. Selecciona un grado para abrir **Diseñar acorde** y personalizar forma, calidad, voicing, quinta, bajo, voz guía, inversión y registro.
+5. Mantén `A S D F G H J K` para aplicar los ocho colores de la paleta seleccionada. **Fijar en grado** persiste la transformación en el grado activo; soltar el color restaura la base si no la fijaste.
+6. En **Sonido y movimiento**, ajusta forma de onda, detune, filtro, arpegiador y efectos.
+7. Selecciona un preset. La carga libera el acorde activo y sincroniza el sonido, los voicings de los pads y el diseñador.
 
 ### Re-voicing de acordes sostenidos
 
-Por defecto una escena afecta al próximo acorde. Activa **Re-voicing del acorde sostenido** para reemplazar diferencialmente las voces de un acorde que ya mantienes pulsado, conservando las notas comunes cuando sea posible.
+Por defecto, editar un grado o cargar ajustes afecta al próximo acorde. Activa **Re-voicing del acorde sostenido** para reemplazar diferencialmente las voces de un acorde que ya mantienes pulsado, conservando las notas comunes cuando sea posible.
 
 ### MIDI Performance
 
@@ -59,11 +52,11 @@ Los tonos armónicos usan canal interno 1; el bajo usa canal 2 y evita el arpegi
 
 ## Presets incluidos
 
-- **Default (Init):** escena A Diatónica.
-- **Warm Saw Chords:** escena C Lo‑Fi Warm.
-- **Ambient Open Keys:** escena C con re-voicing activo.
-- **Arp Plucks:** escena B con arpegiador activo.
-- **Jazz Tension:** escena D con re-voicing activo.
+- **Default (Init):** tríadas compactas diatónicas.
+- **Warm Saw Chords:** receta Lo‑Fi Warm (9ths/13ths abiertas con bajo raíz).
+- **Ambient Open Keys:** receta Lo‑Fi Warm con re-voicing activo.
+- **Arp Plucks:** séptimas diatónicas compactas con arpegiador activo.
+- **Jazz Tension:** receta Jazz Tension (rootless con bajo raíz) con re-voicing activo.
 
 ## Instalación y compilación en Windows
 
@@ -131,7 +124,7 @@ La interfaz no genera audio. Las rutas de receta, voicing, diferencias MIDI y ma
 
 La suite cubre teoría musical, recetas, voicings, bajo, voice leading, transformaciones, mapeo MIDI, estado, presets, automatización y render-safety. Incluye render prolongado, sample rates y bloques distintos, parámetros extremos, restauración de estado y contratos de sintaxis UI.
 
-La validación Linux no sustituye la ejecución real de Standalone/VST3 en Windows. Antes de una entrega, compila y prueba ambos formatos y realiza smoke manual de escenas, colores, pérdida de foco, MIDI, bajo con arpegiador, presets y restauración de proyecto.
+La validación Linux no sustituye la ejecución real de Standalone/VST3 en Windows. Antes de una entrega, compila y prueba ambos formatos y realiza smoke manual de voicings, colores, pérdida de foco, MIDI, bajo con arpegiador, presets y restauración de proyecto.
 
 ## Documentación
 

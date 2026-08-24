@@ -15,12 +15,10 @@ public:
         const music::DiatonicChordVoicer& voicer,
         std::function<int()> getTonicCallback,
         std::function<music::Scale()> getScaleCallback,
-        std::function<int()> getSceneCallback,
-        std::function<void(int scene, int degree)> onSpecSavedCallback);
+        std::function<void(int degree)> onSpecSavedCallback);
     ~ChordDesignerPanel() override;
 
     void setSelectedDegree(int degreeIndex);
-    void setSelectedScene(int sceneIndex);
     void setRuleMode(bool isFreeMode);
     void refresh();
 
@@ -38,11 +36,9 @@ private:
     const music::DiatonicChordVoicer& voicer;
     std::function<int()> getTonic;
     std::function<music::Scale()> getScale;
-    std::function<int()> getScene;
-    std::function<void(int scene, int degree)> onSpecSaved;
+    std::function<void(int degree)> onSpecSaved;
 
     int currentDegree{0};
-    int currentScene{0};
     bool freeMode{false};
 
     // Header elements

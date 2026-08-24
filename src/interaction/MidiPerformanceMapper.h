@@ -23,7 +23,6 @@ public:
         int tonic{0}; // 0 = C
         music::Scale scale{music::Scale::major};
         bool diatonicMode{true};
-        int sceneIndex{0}; // 0..3
         TransformPalette palette{TransformPalette::loFi};
     };
 

@@ -91,10 +91,10 @@ add_test(
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProductionUiSourcesContract.cmake)
 
 add_test(
-    NAME FactorySceneLabelsContract
+    NAME SceneFreePerformancePanelContract
     COMMAND ${CMAKE_COMMAND}
         -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FactorySceneLabelsContract.cmake)
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/SceneFreePerformancePanelContract.cmake)
 
 add_test(
     NAME LiveRevoicePersistenceContract

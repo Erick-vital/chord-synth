@@ -8,7 +8,7 @@ music::VoicingSpec resolvePerformanceVoicingSpec(
     int degree,
     std::optional<TransformSelection> transform) noexcept
 {
-    auto spec = config.getSpec(context.sceneIndex, degree);
+    auto spec = config.getSpec(degree);
     if (context.diatonicMode) {
         spec.qualityRule = music::QualityRule::diatonic;
     }

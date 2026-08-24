@@ -28,16 +28,13 @@ public:
     void visibilityChanged() override;
 
     void selectDegree(int degreeIndex);
-    void selectScene(int sceneIndex);
     void setLiveRevoice(bool enabled);
 
     std::function<void(int degreeIndex)> onDegreeSelected;
-    std::function<void(int sceneIndex)> onSceneSelected;
     std::function<void(bool enabled)> onLiveRevoiceChanged;
 
 private:
     void timerCallback() override;
-    void handleSceneButtonClicked(int sceneIndex);
 
     interaction::ChordPerformanceController& performanceController;
     const music::HarmonyConfiguration& config;
@@ -48,9 +45,6 @@ private:
     juce::Label nowChordLabel;
     juce::Label nowNotesLabel;
     juce::ToggleButton liveRevoiceToggle{"Re-voicing del acorde sostenido"};
-
-    // Scene buttons (1..4 / A..D)
-    std::array<juce::TextButton, 4> sceneButtons;
 
     // 7 Chord Keys (Q..U / I..vii°)
     std::array<ChordKeyComponent, 7> chordKeys;

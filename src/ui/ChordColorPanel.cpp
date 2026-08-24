@@ -33,12 +33,6 @@ const char* spiceSlotNames[8] = {
     return (scale == music::Scale::naturalMinor ? naturalMinor : major)[clampedDegree];
 }
 
-[[nodiscard]] const char* sceneLetter(int sceneIndex) noexcept
-{
-    static constexpr std::array<const char*, 4> letters{"A", "B", "C", "D"};
-    return letters[static_cast<std::size_t>(std::clamp(sceneIndex, 0, 3))];
-}
-
 } // namespace
 
 ChordColorPanel::ChordColorPanel(
@@ -207,13 +201,11 @@ void ChordColorPanel::handleCommitClicked()
         return;
     }
 
-    int scene = performanceController.getScene();
     int degree = performanceController.getActiveChord()->degree;
 
     if (performanceController.commitActiveTransform(config)) {
         feedbackLabel.setColour(juce::Label::textColourId, colors::accent);
-        juce::String successMsg = utf8("Fijado en escena ") + juce::String(sceneLetter(scene)) +
-                                  utf8(" \xc2\xb7 grado ") +
+        juce::String successMsg = utf8("Fijado en grado ") +
                                   utf8(degreeRomanLabel(performanceController.getScale(), degree));
         feedbackLabel.setText(successMsg, juce::dontSendNotification);
         feedbackTimerTicks = 90; // 3 seconds

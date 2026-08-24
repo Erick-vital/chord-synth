@@ -37,28 +37,10 @@ void ChordPerformanceController::setDiatonicMode(bool enabled) noexcept {
     }
 }
 
-void ChordPerformanceController::setScene(int newSceneIndex) noexcept {
-    if (!music::HarmonyConfiguration::isValidScene(newSceneIndex)) {
-        return;
-    }
-
-    if (currentScene == newSceneIndex) {
-        return;
-    }
-
-    endTransform();
-
-    if (liveRevoice && activeChord.has_value()) {
-        applyLiveRevoicing(newSceneIndex);
-    }
-
-    currentScene = newSceneIndex;
-}
-
-music::VoicingSpec ChordPerformanceController::getEffectiveBaseSpec(int sceneIndex, int degreeIndex) const noexcept {
+music::VoicingSpec ChordPerformanceController::getEffectiveBaseSpec(int degreeIndex) const noexcept {
     return resolvePerformanceVoicingSpec(
         config,
-        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = sceneIndex},
+        {.scale = scale, .diatonicMode = diatonicMode},
         degreeIndex);
 }
 
@@ -145,17 +127,6 @@ bool ChordPerformanceController::sendVoicingDifferential(const music::VoicedChor
     return true;
 }
 
-void ChordPerformanceController::applyLiveRevoicing(int targetScene) noexcept {
-    if (!activeChord.has_value()) {
-        return;
-    }
-
-    const int degree = activeChord->degree;
-    const auto spec = getEffectiveBaseSpec(targetScene, degree);
-    const auto voiced = voiceForPerformance(degree, spec);
-    sendVoicingDifferential(voiced);
-}
-
 void ChordPerformanceController::revoiceActiveChordIfHeld(int degree) noexcept {
     if (!liveRevoice || !activeChord.has_value() || activeChord->degree != degree) {
         return;
@@ -163,7 +134,7 @@ void ChordPerformanceController::revoiceActiveChordIfHeld(int degree) noexcept {
 
     const auto spec = resolvePerformanceVoicingSpec(
         config,
-        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = currentScene},
+        {.scale = scale, .diatonicMode = diatonicMode},
         degree,
         activeTransform);
     sendVoicingDifferential(voiceForPerformance(degree, spec));
@@ -181,7 +152,7 @@ bool ChordPerformanceController::pressDegree(int degree, float velocity) noexcep
 
     const auto spec = resolvePerformanceVoicingSpec(
         config,
-        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = currentScene},
+        {.scale = scale, .diatonicMode = diatonicMode},
         degree,
         activeTransform);
     const auto voiced = voiceForPerformance(degree, spec);
@@ -294,7 +265,7 @@ bool ChordPerformanceController::beginTransform(TransformPalette palette, Transf
     const ActiveTransform transform{.palette = palette, .slot = slot};
     const auto spec = resolvePerformanceVoicingSpec(
         config,
-        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = currentScene},
+        {.scale = scale, .diatonicMode = diatonicMode},
         degree,
         transform);
     const auto voiced = voiceForPerformance(degree, spec);
@@ -314,7 +285,7 @@ void ChordPerformanceController::endTransform() noexcept {
 
     if (activeChord.has_value()) {
         const int degree = activeChord->degree;
-        const auto baseSpec = getEffectiveBaseSpec(currentScene, degree);
+        const auto baseSpec = getEffectiveBaseSpec(degree);
         const auto voiced = voiceForPerformance(degree, baseSpec);
         if (!sendVoicingDifferential(voiced)) {
             return;
@@ -332,7 +303,7 @@ std::optional<music::VoicingSpec> ChordPerformanceController::transformedSpecFor
     const int degree = activeChord->degree;
     return resolvePerformanceVoicingSpec(
         config,
-        {.scale = scale, .diatonicMode = diatonicMode, .sceneIndex = currentScene},
+        {.scale = scale, .diatonicMode = diatonicMode},
         degree,
         activeTransform);
 }
@@ -348,7 +319,7 @@ bool ChordPerformanceController::commitActiveTransform(music::HarmonyConfigurati
     }
 
     const int degree = activeChord->degree;
-    if (!targetConfig.setSpec(currentScene, degree, *transformedSpec)) {
+    if (!targetConfig.setSpec(degree, *transformedSpec)) {
         return false;
     }
 

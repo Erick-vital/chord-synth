@@ -28,9 +28,8 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
 
     interaction::ChordPerformanceController controller(config, voicer, output);
 
-    // Initial state: C major (tonic = 0), Scene A (triads, root, close)
+    // Initial state: C major (tonic = 0)
     controller.setTonic(0);
-    controller.setScene(0);
     controller.setLiveRevoice(false);
 
     SECTION("pressDegree produces note-on events and updates active chord") {
@@ -52,7 +51,7 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
     SECTION("Diatonic mode ignores a saved manual quality override") {
         music::VoicingSpec overriddenSpec;
         overriddenSpec.qualityRule = music::QualityRule::major;
-        config.setSpec(0, 1, overriddenSpec);
+        config.setSpec(1, overriddenSpec);
 
         controller.setDiatonicMode(true);
         REQUIRE(controller.pressDegree(1, 0.8f));
@@ -86,15 +85,14 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         REQUIRE(output.pushedMessages.empty());
     }
 
-    SECTION("Changing tonic or scene before release does not corrupt note-off notes") {
+    SECTION("Changing tonic before release does not corrupt note-off notes") {
         REQUIRE(controller.pressDegree(0, 0.8f));
         output.pushedMessages.clear();
 
-        // Change tonic to G major (7) and scene to B (seventh) while chord is held
+        // Change tonic to G major (7) while chord is held
         controller.setTonic(7);
-        controller.setScene(1);
 
-        // Release must still turn off the C major triad (48, 52, 55), not G major seventh
+        // Release must still turn off the C major triad (48, 52, 55), not G major
         controller.releaseActiveChord();
         REQUIRE_FALSE(controller.getActiveChord().has_value());
 
@@ -143,12 +141,15 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
     }
 
     SECTION("Nearest voice leading resolves the next degree from the sounding notes") {
-        controller.setScene(1); // nearest by factory contract
+        music::VoicingSpec nearestSpec{};
+        nearestSpec.voiceLeading = music::VoiceLeadingMode::nearest;
+        config.setSpec(0, nearestSpec);
+
         REQUIRE(controller.pressDegree(6, 0.8f));
         const auto previousNotes = controller.getActiveChord()->notes;
         output.pushedMessages.clear();
 
-        const auto targetSpec = config.getSpec(1, 0);
+        const auto targetSpec = config.getSpec(0);
         const auto defaultTarget = voicer.voiceChord(0, 0, targetSpec, music::Scale::major).notes;
         const auto nearestTarget = music::VoiceLeadingResolver::resolveNearestVoiceLeading(previousNotes, defaultTarget);
         REQUIRE(nearestTarget != defaultTarget);
@@ -171,55 +172,61 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         REQUIRE(output.pushedMessages.size() == 3);
     }
 
-    SECTION("Scene change with liveRevoice=false leaves held chord intact") {
+    SECTION("Modifying degree spec with liveRevoice=false leaves held chord intact") {
         REQUIRE(controller.pressDegree(0, 0.8f));
         output.pushedMessages.clear();
 
         controller.setLiveRevoice(false);
-        controller.setScene(1); // Scene B = seventh chords
+
+        // Mutate spec in config
+        music::VoicingSpec seventhSpec{};
+        seventhSpec.shape = music::ChordShape::seventh;
+        config.setSpec(0, seventhSpec);
+
+        controller.revoiceActiveChordIfHeld(0);
 
         // No MIDI should have been output
         REQUIRE(output.pushedMessages.empty());
         REQUIRE(controller.getActiveChord()->notes.size() == 3);
     }
 
-    SECTION("Scene change with liveRevoice=true calculates differential note changes") {
+    SECTION("Modifying degree spec with liveRevoice=true calculates differential note changes") {
         controller.setLiveRevoice(true);
-        // Explicitly set Scene A degree 0 to triad and Scene D degree 0 to 1st inversion triad for test predictability
-        music::VoicingSpec specA{};
-        specA.shape = music::ChordShape::triad;
-        specA.style = music::VoicingStyle::compact;
-        specA.inversion = 0;
-        config.setSpec(0, 0, specA);
 
-        music::VoicingSpec specB{};
-        specB.shape = music::ChordShape::seventh;
-        specB.style = music::VoicingStyle::compact;
-        specB.inversion = 0;
-        config.setSpec(1, 0, specB);
-
-        music::VoicingSpec specD{};
-        specD.shape = music::ChordShape::triad;
-        specD.style = music::VoicingStyle::compact;
-        specD.inversion = 1;
-        config.setSpec(3, 0, specD);
+        music::VoicingSpec specTriad{};
+        specTriad.shape = music::ChordShape::triad;
+        specTriad.style = music::VoicingStyle::compact;
+        specTriad.inversion = 0;
+        config.setSpec(0, specTriad);
 
         REQUIRE(controller.pressDegree(0, 0.8f)); // C triad: 48, 52, 55
         output.pushedMessages.clear();
 
-        // 1. C triad -> Cmaj7 (Scene B: 48, 52, 55, 59)
+        // 1. C triad -> Cmaj7 (48, 52, 55, 59)
         // Only 59 (B) is added, 48, 52, 55 are common
-        controller.setScene(1);
+        music::VoicingSpec specSeventh{};
+        specSeventh.shape = music::ChordShape::seventh;
+        specSeventh.style = music::VoicingStyle::compact;
+        specSeventh.inversion = 0;
+        config.setSpec(0, specSeventh);
+
+        controller.revoiceActiveChordIfHeld(0);
         REQUIRE(controller.getActiveChord()->notes.size() == 4);
         REQUIRE(output.pushedMessages.size() == 1);
         REQUIRE(output.pushedMessages[0].isNoteOn());
         REQUIRE(output.pushedMessages[0].getNoteNumber() == 59);
 
-        // 2. Cmaj7 -> C 1st inversion triad (Scene D: 52, 55, 60)
+        // 2. Cmaj7 -> C 1st inversion triad (52, 55, 60)
         // Common notes: 52, 55. Removed: 48, 59. Added: 60.
         // Offs should be enqueued before ons!
         output.pushedMessages.clear();
-        controller.setScene(3); // Scene D
+        music::VoicingSpec specInv{};
+        specInv.shape = music::ChordShape::triad;
+        specInv.style = music::VoicingStyle::compact;
+        specInv.inversion = 1;
+        config.setSpec(0, specInv);
+
+        controller.revoiceActiveChordIfHeld(0);
         REQUIRE(controller.getActiveChord()->notes.size() == 3);
         REQUIRE(output.pushedMessages.size() == 3);
         // Removed notes (note-offs)
@@ -248,10 +255,10 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         REQUIRE(controller.pressDegree(0, 0.8f)); // C triad: 48, 52, 55
         output.pushedMessages.clear();
 
-        // Mutate spec for degree 0 in Scene A to seventh chord
+        // Mutate spec for degree 0 to seventh chord
         music::VoicingSpec seventhSpec;
         seventhSpec.extension = music::ChordExtension::seventh;
-        config.setSpec(0, 0, seventhSpec);
+        config.setSpec(0, seventhSpec);
 
         // Calling revoiceActiveChordIfHeld(0) while holding degree 0
         controller.revoiceActiveChordIfHeld(0);
@@ -276,13 +283,13 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         // Configure degree 0 with BassMode::root
         music::VoicingSpec rootBassSpec;
         rootBassSpec.bassMode = music::BassMode::root;
-        config.setSpec(0, 0, rootBassSpec);
+        config.setSpec(0, rootBassSpec);
 
         // Configure degree 1 with BassMode::slashDegree (degree 0 = C)
         music::VoicingSpec slashBassSpec;
         slashBassSpec.bassMode = music::BassMode::slashDegree;
         slashBassSpec.slashDegree = 0;
-        config.setSpec(0, 1, slashBassSpec);
+        config.setSpec(1, slashBassSpec);
 
         // 1. Press degree 0: should send note-ons for chord notes on channel 1 (or configured midiChannel) AND bass note on channel 2
         REQUIRE(controller.pressDegree(0, 0.8f));
@@ -355,7 +362,7 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         // Degree 0 starts with no bass
         music::VoicingSpec specNoBass;
         specNoBass.bassMode = music::BassMode::none;
-        config.setSpec(0, 0, specNoBass);
+        config.setSpec(0, specNoBass);
 
         REQUIRE(controller.pressDegree(0, 0.8f));
         REQUIRE_FALSE(controller.getActiveChord()->bassMidi.has_value());
@@ -364,7 +371,7 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         // Mutate spec to BassMode::root
         music::VoicingSpec specWithBass;
         specWithBass.bassMode = music::BassMode::root;
-        config.setSpec(0, 0, specWithBass);
+        config.setSpec(0, specWithBass);
 
         controller.revoiceActiveChordIfHeld(0);
         REQUIRE(controller.getActiveChord()->bassMidi.has_value());
@@ -381,7 +388,7 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         music::VoicingSpec specSlash;
         specSlash.bassMode = music::BassMode::slashDegree;
         specSlash.slashDegree = 2;
-        config.setSpec(0, 0, specSlash);
+        config.setSpec(0, specSlash);
 
         controller.revoiceActiveChordIfHeld(0);
         REQUIRE(controller.getActiveChord()->bassMidi.has_value());
@@ -417,7 +424,6 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         {
             interaction::ChordPerformanceController localController(config, voicer, output);
             localController.setTonic(0);
-            localController.setScene(0);
             output.failPushes = false;
             REQUIRE(localController.pressDegree(0, 0.8f));
             output.pushedMessages.clear();
@@ -435,7 +441,6 @@ TEST_CASE("ChordPerformanceController press, release and lifecycle", "[interacti
         interaction::ChordPerformanceController controllerWithRealQueue(config, voicer, realOutput);
 
         controllerWithRealQueue.setTonic(0);
-        controllerWithRealQueue.setScene(0);
 
         REQUIRE(controllerWithRealQueue.pressDegree(0, 0.8f));
         REQUIRE(controllerWithRealQueue.getActiveChord().has_value());
@@ -456,7 +461,6 @@ TEST_CASE("ChordPerformanceController temporary transform lifecycle", "[interact
 
     interaction::ChordPerformanceController controller(config, voicer, output);
     controller.setTonic(0); // C Major
-    controller.setScene(0); // Scene A (triads)
     controller.setLiveRevoice(false);
 
     SECTION("beginTransform without active chord updates transform state but emits no MIDI and returns true/false according to spec") {
@@ -504,7 +508,7 @@ TEST_CASE("ChordPerformanceController temporary transform lifecycle", "[interact
         REQUIRE(output.pushedMessages[1].getNoteNumber() == 51);
 
         // Saved config in HarmonyConfiguration must NOT have mutated!
-        REQUIRE(config.getSpec(0, 0).qualityRule == music::QualityRule::diatonic);
+        REQUIRE(config.getSpec(0).qualityRule == music::QualityRule::diatonic);
     }
 
     SECTION("Switching transform slots calculates from the saved base spec, not the previous transform") {
@@ -564,7 +568,7 @@ TEST_CASE("ChordPerformanceController temporary transform lifecycle", "[interact
         REQUIRE(controller.getActiveChord()->notes == music::NoteSet({48, 51, 55}, 3));
 
         // targetConfig has been updated with the minor qualityRule
-        auto savedSpec = targetConfig.getSpec(0, 0);
+        auto savedSpec = targetConfig.getSpec(0);
         REQUIRE(savedSpec.qualityRule == music::QualityRule::minor);
 
         // Calling commitActiveTransform when no transform is active returns false
@@ -625,7 +629,7 @@ TEST_CASE("ChordPerformanceController temporary transform lifecycle", "[interact
         REQUIRE(output.pushedMessages.size() == 6);
     }
 
-    SECTION("Scene, tonic, or scale change ends active transform safely") {
+    SECTION("Tonic or scale change ends active transform safely") {
         REQUIRE(controller.pressDegree(0, 0.8f));
         REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
         REQUIRE(controller.hasActiveTransform());
@@ -640,14 +644,6 @@ TEST_CASE("ChordPerformanceController temporary transform lifecycle", "[interact
 
         // Scale change
         controller.setScale(music::Scale::naturalMinor);
-        REQUIRE_FALSE(controller.hasActiveTransform());
-
-        // Begin transform again
-        REQUIRE(controller.beginTransform(interaction::TransformPalette::basic, interaction::TransformSlot::one));
-        REQUIRE(controller.hasActiveTransform());
-
-        // Scene change
-        controller.setScene(1);
         REQUIRE_FALSE(controller.hasActiveTransform());
     }
 

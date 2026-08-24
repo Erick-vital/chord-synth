@@ -1,4 +1,5 @@
 # Lo‑Fi/Jazz Harmony and Performance Implementation Plan
+<!-- completed -->
 
 > **For Hermes:** Use `subagent-driven-development` to implement this plan task-by-task. Execute sequentially. After every implementation task, run a specification-compliance review and then an independent code-quality/realtime-safety review before committing.
 

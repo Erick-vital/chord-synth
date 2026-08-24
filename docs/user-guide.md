@@ -18,18 +18,16 @@ Selecciona una tonalidad y una escala (Mayor o Menor natural) en la barra de arm
 
 Mantén la tecla o el pad para sostener el acorde y suéltalo para liberar exactamente las notas que se enviaron. Los cambios desde los controles de la interfaz para tonalidad, escala y preset, y la pérdida de foco, liberan el acorde activo para no dejar notas colgadas.
 
-## 2. Escenas de armonía
+## 2. Configuración y diseño de voicings
 
-Usa los botones A–D o las teclas `1`–`4` para cambiar escena. Cada escena se adapta a la tonalidad y escala actuales.
+ChordSynth organiza su armonía en una configuración de siete grados (I–vii°). Puedes personalizar individualmente cada grado abriendo **Diseñar acorde** o cargando presets diseñados con recetas de fábrica:
 
-| Escena | Uso |
-|---|---|
-| A · Diatónica | tríadas compactas; buen punto de partida |
-| B · Séptimas | séptimas diatónicas compactas con nearest voice leading |
-| C · Lo‑Fi Warm | 9/13 abiertos, bajo raíz y voice leading cercano |
-| D · Jazz Tension | 6/9, 9, 11 y 13 rootless con bajo raíz |
+- **Init / Diatónica:** tríadas compactas diatónicas; punto de partida estándar.
+- **Séptimas:** séptimas diatónicas compactas con nearest voice leading.
+- **Lo‑Fi Warm:** novenas y trecenas abiertas con bajo raíz y nearest voice leading.
+- **Jazz Tension:** extensiones 6/9, 9, 11 y 13 rootless con bajo raíz.
 
-Por defecto, un cambio de escena afecta al siguiente acorde. Activa **Re-voicing del acorde sostenido** si quieres actualizar diferencialmente el acorde que mantienes pulsado.
+Por defecto, los cambios de diseño en un grado afectan al siguiente acorde. Activa **Re-voicing del acorde sostenido** si quieres actualizar diferencialmente el acorde que mantienes pulsado.
 
 ## 3. Diseñar un acorde
 
@@ -59,7 +57,7 @@ El motor limita la armonía a seis notas y un bajo opcional, conserva registros 
 
 El panel **Chord Color** ofrece tres paletas: Básica, Lo‑Fi y Spice. Sus ocho botones se pueden mantener con `A S D F G H J K`.
 
-Mientras un grado está sostenido, pulsar un color modifica temporalmente el acorde. Soltarlo restaura la configuración guardada. **Fijar en grado** guarda el color actual en la escena y grado seleccionados; no hace un corte ni rearticula las notas que ya suenan.
+Mientras un grado está sostenido, pulsar un color modifica temporalmente el acorde. Soltarlo restaura la configuración guardada. **Fijar en grado** guarda el color actual directamente en el grado activo; no hace un corte ni rearticula las notas que ya suenan.
 
 La paleta Básica ofrece flip mayor/menor, dominante 7, séptima color, add9, sus4, sus2, 6/9 y disminuido. Lo‑Fi añade 9, add9, 6/9, 11, open/rootless y warm 13. Spice ofrece dominantes, disminuidos y tensiones disponibles en v1. Los atajos no actúan mientras editas texto o un selector tiene el foco.
 
@@ -82,13 +80,13 @@ Selecciona Sine, Saw, Square o Triangle; ajusta detune, filtro low-pass y resona
 
 El selector **Preset** incluye:
 
-- Default (Init): escena A.
-- Warm Saw Chords: escena C.
-- Ambient Open Keys: escena C con re-voicing activo.
-- Arp Plucks: escena B y arpegiador activo.
-- Jazz Tension: escena D con re-voicing activo.
+- Default (Init): tríadas compactas diatónicas.
+- Warm Saw Chords: receta Lo‑Fi Warm (9ths/13ths abiertas con bajo raíz).
+- Ambient Open Keys: receta Lo‑Fi Warm con re-voicing activo.
+- Arp Plucks: séptimas diatónicas compactas con arpegiador activo.
+- Jazz Tension: receta Jazz Tension (rootless con bajo raíz) con re-voicing activo.
 
-Al cargar un preset, ChordSynth libera primero el acorde activo y sincroniza sonido, tonalidad, escena, pads, diseñador y paleta. Los presets actuales usan el esquema JSON 3; se mantienen compatibles los esquemas 1 y 2. HarmonyState v2 carga además estados v1 con sus valores legados.
+Al cargar un preset, ChordSynth libera primero el acorde activo y sincroniza sonido, tonalidad, voicings de los pads, diseñador y paleta. Los presets actuales usan el esquema JSON 5 de configuración única; se mantiene compatibilidad automática al cargar esquemas 1 a 4 extrayendo la escena seleccionada legada. HarmonyState v3 guarda la configuración única y migra estados v1 y v2 seleccionando la escena activa histórica.
 
 ## 8. Standalone y VST3
 
@@ -102,4 +100,4 @@ cmake --build --preset windows-msvc-release --config Release --parallel
 ctest --test-dir out/build/windows-msvc-release -C Release --output-on-failure
 ```
 
-Después abre Standalone y valida escenas, colores, liberación por foco, mapeo MIDI, bajo con arpegiador, restauración de presets y proyectos. Prueba el VST3 en tu DAW y con pluginval siguiendo las listas del repositorio.
+Después abre Standalone y valida voicings, colores, liberación por foco, mapeo MIDI, bajo con arpegiador, restauración de presets y proyectos. Prueba el VST3 en tu DAW y con pluginval siguiendo las listas del repositorio.

@@ -13,13 +13,12 @@ struct TransformSelection {
     constexpr bool operator==(const TransformSelection& other) const noexcept = default;
 };
 
-// Pure, shared resolution path for the scene configuration and a temporary
+// Pure, shared resolution path for the voicing configuration and a temporary
 // color transform. UI and realtime MIDI use the same musical result while
 // retaining their own thread-safe note ownership and output mechanisms.
 struct PerformanceVoicingContext {
     music::Scale scale{music::Scale::major};
     bool diatonicMode{true};
-    int sceneIndex{0};
 };
 
 [[nodiscard]] music::VoicingSpec resolvePerformanceVoicingSpec(

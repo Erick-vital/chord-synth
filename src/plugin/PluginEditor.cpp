@@ -57,8 +57,7 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
           chordVoicer,
           /*getTonic=*/[this]() { return performanceController.getTonic(); },
           /*getScale=*/[this]() { return performanceController.getScale(); },
-          /*getScene=*/[this]() { return performanceController.getScene(); },
-          /*onSpecSaved=*/[this](int scene, int degree) {
+          /*onSpecSaved=*/[this](int degree) {
               performancePanel.updateChordKeys();
               performanceController.revoiceActiveChordIfHeld(degree);
           })
@@ -85,7 +84,6 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
         harmonyToolbar.setScale(initialScale);
     }
 
-    performanceController.setScene(p.getHarmonyState().getSelectedScene());
     performanceController.setLiveRevoice(p.getHarmonyState().getLiveRevoice());
     performancePanel.setLiveRevoice(p.getHarmonyState().getLiveRevoice());
 
@@ -97,11 +95,6 @@ ChordSynthAudioProcessorEditor::ChordSynthAudioProcessorEditor(ChordSynthAudioPr
     // Wire callbacks between performance panel, color panel and designer
     performancePanel.onDegreeSelected = [this](int degreeIndex) {
         chordDesignerPanel.setSelectedDegree(degreeIndex);
-    };
-
-    performancePanel.onSceneSelected = [this](int sceneIndex) {
-        audioProcessor.getHarmonyState().setSelectedScene(sceneIndex);
-        chordDesignerPanel.setSelectedScene(sceneIndex);
     };
 
     performancePanel.onLiveRevoiceChanged = [this](bool enabled) {
@@ -137,7 +130,7 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
 {
     builtinPresets.clear();
 
-    // Preset 1: Default (Init) -> Scene A Diatónica
+    // Preset 1: Default (Init) -> Diatonic compact triads
     presets::Preset initPreset;
     initPreset.name = "Default (Init)";
     initPreset.parameters.key = 0; // C
@@ -146,11 +139,11 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     initPreset.parameters.resonance = 0.2f;
     initPreset.parameters.detuneCents = 7.0f;
     initPreset.parameters.masterGainDb = -12.0f;
-    initPreset.harmony.setSelectedScene(0); // Scene A · Diatónica
+    initPreset.harmony.setConfiguration(music::HarmonyConfiguration::makeDiatonic());
     initPreset.harmony.setLiveRevoice(false);
     builtinPresets.push_back(initPreset);
 
-    // Preset 2: Warm Saw Chords -> Scene C Lo‑Fi Warm
+    // Preset 2: Warm Saw Chords -> Lo‑Fi Warm recipe
     presets::Preset warmPreset;
     warmPreset.name = "Warm Saw Chords";
     warmPreset.parameters.key = 0;
@@ -161,11 +154,11 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     warmPreset.parameters.chorusMix = 0.4f;
     warmPreset.parameters.reverbMix = 0.3f;
     warmPreset.parameters.masterGainDb = -12.0f;
-    warmPreset.harmony.setSelectedScene(2); // Scene C · Lo‑Fi Warm
+    warmPreset.harmony.setConfiguration(music::HarmonyConfiguration::makeLofiWarm());
     warmPreset.harmony.setLiveRevoice(false);
     builtinPresets.push_back(warmPreset);
 
-    // Preset 3: Ambient Open Keys -> Scene C Lo‑Fi Warm with Live Revoice
+    // Preset 3: Ambient Open Keys -> Lo‑Fi Warm recipe with Live Revoice
     presets::Preset ambientPreset;
     ambientPreset.name = "Ambient Open Keys";
     ambientPreset.parameters.key = 0;
@@ -177,11 +170,11 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     ambientPreset.parameters.delayFeedback = 0.4f;
     ambientPreset.parameters.reverbMix = 0.5f;
     ambientPreset.parameters.masterGainDb = -12.0f;
-    ambientPreset.harmony.setSelectedScene(2); // Scene C · Lo‑Fi Warm
+    ambientPreset.harmony.setConfiguration(music::HarmonyConfiguration::makeLofiWarm());
     ambientPreset.harmony.setLiveRevoice(true);
     builtinPresets.push_back(ambientPreset);
 
-    // Preset 4: Arp Plucks -> Scene B Séptimas
+    // Preset 4: Arp Plucks -> Compact diatonic sevenths
     presets::Preset arpPreset;
     arpPreset.name = "Arp Plucks";
     arpPreset.parameters.key = 0;
@@ -195,11 +188,11 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     arpPreset.parameters.arpGate = 0.7f;
     arpPreset.parameters.delayMix = 0.25f;
     arpPreset.parameters.masterGainDb = -12.0f;
-    arpPreset.harmony.setSelectedScene(1); // Scene B · Séptimas
+    arpPreset.harmony.setConfiguration(music::HarmonyConfiguration::makeSevenths());
     arpPreset.harmony.setLiveRevoice(false);
     builtinPresets.push_back(arpPreset);
 
-    // Preset 5: Jazz Tension -> Scene D Jazz Tension
+    // Preset 5: Jazz Tension -> Jazz Tension recipe with Live Revoice
     presets::Preset jazzPreset;
     jazzPreset.name = "Jazz Tension";
     jazzPreset.parameters.key = 0;
@@ -210,7 +203,7 @@ void ChordSynthAudioProcessorEditor::setupBuiltinPresets()
     jazzPreset.parameters.chorusMix = 0.25f;
     jazzPreset.parameters.reverbMix = 0.35f;
     jazzPreset.parameters.masterGainDb = -12.0f;
-    jazzPreset.harmony.setSelectedScene(3); // Scene D · Jazz Tension
+    jazzPreset.harmony.setConfiguration(music::HarmonyConfiguration::makeJazzTension());
     jazzPreset.harmony.setLiveRevoice(true);
     builtinPresets.push_back(jazzPreset);
 }
@@ -233,7 +226,6 @@ void ChordSynthAudioProcessorEditor::loadPresetAtIndex(int index)
     const auto presetScale = preset.parameters.scale == 1
         ? music::Scale::naturalMinor : music::Scale::major;
     performanceController.setScale(presetScale);
-    performanceController.setScene(preset.harmony.getSelectedScene());
     performanceController.setLiveRevoice(preset.harmony.getLiveRevoice());
     performancePanel.setLiveRevoice(preset.harmony.getLiveRevoice());
 
@@ -242,9 +234,7 @@ void ChordSynthAudioProcessorEditor::loadPresetAtIndex(int index)
     harmonyToolbar.setTonic(preset.parameters.key);
     harmonyToolbar.setScale(presetScale);
     harmonyToolbar.setRuleMode(isFreeMode);
-    performancePanel.selectScene(preset.harmony.getSelectedScene());
     chordDesignerPanel.setRuleMode(isFreeMode);
-    chordDesignerPanel.setSelectedScene(preset.harmony.getSelectedScene());
 
     performancePanel.updateChordKeys();
     chordDesignerPanel.refresh();

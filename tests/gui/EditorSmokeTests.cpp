@@ -186,7 +186,6 @@ TEST_CASE("Production PluginEditor renders Spanish interface text as UTF-8", "[g
 
     for (const auto& expected : {
              juce::String::fromUTF8("Diat\xc3\xb3nico"),
-             juce::String::fromUTF8("2  B \xc2\xb7 S\xc3\xa9ptimas"),
              juce::String::fromUTF8("Dise\xc3\xb1" "ar acorde"),
              juce::String::fromUTF8("Seg\xc3\xba" "n escala"),
              juce::String::fromUTF8("Ra\xc3\xad" "z")

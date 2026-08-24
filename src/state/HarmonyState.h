@@ -7,16 +7,11 @@
 namespace chordsynth::state {
 
 inline constexpr auto stateTag = "HarmonyState";
-inline constexpr int currentVersion = 2;
+inline constexpr int currentVersion = 3;
 
 class HarmonyState {
 public:
     HarmonyState() noexcept = default;
-
-    [[nodiscard]] int getSelectedScene() const noexcept { return selectedScene; }
-    void setSelectedScene(int sceneIndex) noexcept {
-        selectedScene = std::clamp(sceneIndex, 0, 3);
-    }
 
     [[nodiscard]] bool getLiveRevoice() const noexcept { return liveRevoice; }
     void setLiveRevoice(bool enabled) noexcept { liveRevoice = enabled; }
@@ -35,13 +30,10 @@ public:
     }
 
     void resetToDefaults() noexcept {
-        selectedScene = 0;
         liveRevoice = false;
         qualityRule = music::QualityRule::diatonic;
         configuration.resetAll();
     }
-
-    void resetToLegacyDefaults() noexcept;
 
     [[nodiscard]] juce::ValueTree toValueTree() const;
     bool loadFromValueTree(const juce::ValueTree& vt) noexcept;
@@ -49,7 +41,6 @@ public:
     bool operator==(const HarmonyState& other) const noexcept = default;
 
 private:
-    int selectedScene{0}; // 0..3 (A..D)
     bool liveRevoice{false};
     music::QualityRule qualityRule{music::QualityRule::diatonic};
     music::HarmonyConfiguration configuration{};

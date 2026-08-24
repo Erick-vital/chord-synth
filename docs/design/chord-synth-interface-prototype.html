@@ -185,19 +185,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <div class="field"><label for="scale">Escala</label><select id="scale" class="compact-select"><option>Major</option></select></div>
       <div class="field"><label>Reglas</label><div class="segmented" id="rules"><button class="active" data-rule="diatonic">Diatónico</button><button data-rule="free">Libre</button></div></div>
       <div></div>
-      <div class="hint"><b>Q–U</b> toca acordes · <b>1–4</b> cambia voicing</div>
+      <div class="hint"><b>Q–U</b> toca acordes · <b>A–K</b> activa colores</div>
     </section>
 
     <section class="performance" aria-label="Interpretación de acordes">
       <div class="performance-head">
         <div class="now-playing"><span class="eyebrow">Ahora</span><strong id="nowChord">Listo para tocar</strong><span class="now-notes" id="nowNotes">Pulsa una tecla</span></div>
         <label class="live-toggle"><input id="liveRevoice" type="checkbox"> Re-voicing del acorde sostenido</label>
-      </div>
-      <div class="scene-strip" id="scenes">
-        <button class="scene active" data-scene="triad"><span class="scene-key">1</span><b>A · Triadas</b><small>Posición raíz</small></button>
-        <button class="scene" data-scene="seventh"><span class="scene-key">2</span><b>B · Séptimas</b><small>Color diatónico</small></button>
-        <button class="scene" data-scene="open"><span class="scene-key">3</span><b>C · Abierto</b><small>Quinta separada</small></button>
-        <button class="scene" data-scene="inversion"><span class="scene-key">4</span><b>D · Inversiones</b><small>Voice leading</small></button>
       </div>
       <div class="chord-keys" id="chordKeys" aria-label="Teclado de siete acordes"></div>
     </section>
@@ -242,7 +236,6 @@ const triadIntervals = [[0,4,7],[0,3,7],[0,3,7],[0,4,7],[0,4,7],[0,3,7],[0,3,6]]
 const seventhIntervals = [[0,4,7,11],[0,3,7,10],[0,3,7,10],[0,4,7,11],[0,4,7,10],[0,3,7,10],[0,3,6,10]];
 const seventhSuffix = ['maj7','m7','m7','maj7','7','m7','m7♭5'];
 let tonic = 0;
-let scene = 'triad';
 let selectedDegree = 0;
 let heldDegree = null;
 let rule = 'diatonic';
@@ -250,15 +243,13 @@ const keySelect = document.querySelector('#key');
 pitchNames.forEach((name, i) => keySelect.add(new Option(name, i)));
 
 function midiName(value) { return `${pitchNames[((value % 12) + 12) % 12]}${Math.floor(value / 12) - 1}`; }
-function dataFor(degree, requestedScene = scene) {
+function dataFor(degree, kind = 'triad') {
   const root = 48 + tonic + scaleSteps[degree];
-  const intervals = requestedScene === 'seventh' ? seventhIntervals[degree] : triadIntervals[degree];
+  const intervals = kind === 'seventh' ? seventhIntervals[degree] : triadIntervals[degree];
   let notes = intervals.map(interval => root + interval);
-  if (requestedScene === 'open' && notes.length >= 3) notes = [notes[0], notes[2], notes[1] + 12];
-  if (requestedScene === 'inversion') notes = [...notes.slice(1), notes[0] + 12];
   const rootName = pitchNames[(tonic + scaleSteps[degree]) % 12];
   let suffix = degree === 1 || degree === 2 || degree === 5 ? 'm' : degree === 6 ? 'dim' : '';
-  if (requestedScene === 'seventh') suffix = seventhSuffix[degree];
+  if (kind === 'seventh') suffix = seventhSuffix[degree];
   return { label: rootName + suffix, notes: notes.map(midiName) };
 }
 function renderKeys() {
@@ -297,13 +288,6 @@ function updateDesigner() {
   document.querySelector('#editChord').textContent = `${degrees[selectedDegree]} · ${data.label}`;
   document.querySelector('#editNotes').textContent = data.notes.join(' · ');
 }
-function setScene(next) {
-  scene = next;
-  document.querySelectorAll('.scene').forEach(button => button.classList.toggle('active', button.dataset.scene === scene));
-  renderKeys();
-  if (heldDegree !== null && document.querySelector('#liveRevoice').checked) play(heldDegree);
-}
-document.querySelector('#scenes').addEventListener('click', e => { const button = e.target.closest('.scene'); if (button) setScene(button.dataset.scene); });
 keySelect.addEventListener('change', () => { tonic = Number(keySelect.value); renderKeys(); });
 document.querySelector('#rules').addEventListener('click', e => {
   const button = e.target.closest('button'); if (!button) return;
@@ -329,8 +313,6 @@ document.querySelector('#resetChord').addEventListener('click', () => { ['qualit
 const down = new Set();
 window.addEventListener('keydown', e => {
   if (e.repeat || ['SELECT','INPUT'].includes(document.activeElement.tagName)) return;
-  const sceneIndex = ['1','2','3','4'].indexOf(e.key);
-  if (sceneIndex >= 0) setScene(['triad','seventh','open','inversion'][sceneIndex]);
   const index = shortcuts.indexOf(e.key.toUpperCase());
   if (index >= 0 && !down.has(index)) { down.add(index); play(index); }
 });

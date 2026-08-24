@@ -13,20 +13,13 @@ const char* degreeRomanLabel(music::Scale scale, int degree)
     static constexpr std::array<const char*, 7> naturalMinor{"i", "ii\xc2\xb0", "III", "iv", "v", "VI", "VII"};
     return (scale == music::Scale::naturalMinor ? naturalMinor : major)[static_cast<std::size_t>(degree)];
 }
-constexpr std::array<const char*, 4> sceneLabels{
-    "1  A \xc2\xb7 Diat\xc3\xb3nica",
-    "2  B \xc2\xb7 S\xc3\xa9ptimas",
-    "3  C \xc2\xb7 Lo\xe2\x80\x91" "Fi Warm",
-    "4  D \xc2\xb7 Jazz Tension"
-};
 
 music::VoicingSpec resolvedSpec(
     const music::HarmonyConfiguration& config,
     const interaction::ChordPerformanceController& controller,
-    int scene,
     int degree)
 {
-    auto spec = config.getSpec(scene, degree);
+    auto spec = config.getSpec(degree);
     if (controller.isDiatonicMode()) {
         spec.qualityRule = music::QualityRule::diatonic;
     }
@@ -72,17 +65,6 @@ PerformancePanel::PerformancePanel(
     };
     addAndMakeVisible(liveRevoiceToggle);
 
-    // Scene buttons
-    for (int i = 0; i < 4; ++i) {
-        sceneButtons[static_cast<std::size_t>(i)].setButtonText(utf8(sceneLabels[static_cast<std::size_t>(i)]));
-        sceneButtons[static_cast<std::size_t>(i)].setComponentID("scene-" + juce::String(i));
-        sceneButtons[static_cast<std::size_t>(i)].setClickingTogglesState(false);
-        sceneButtons[static_cast<std::size_t>(i)].onClick = [this, i]() {
-            handleSceneButtonClicked(i);
-        };
-        addAndMakeVisible(sceneButtons[static_cast<std::size_t>(i)]);
-    }
-
     // Chord keys
     for (int i = 0; i < 7; ++i) {
         auto& key = chordKeys[static_cast<std::size_t>(i)];
@@ -100,7 +82,7 @@ PerformancePanel::PerformancePanel(
                     performanceController.getTonic(),
                     active->degree,
                     resolvedSpec(
-                        config, performanceController, performanceController.getScene(), active->degree),
+                        config, performanceController, active->degree),
                     performanceController.getScale());
 
                 juce::String notesStr;
@@ -131,7 +113,6 @@ PerformancePanel::PerformancePanel(
         addAndMakeVisible(key);
     }
 
-    selectScene(performanceController.getScene());
     updateChordKeys();
     selectDegree(0);
 
@@ -170,64 +151,12 @@ void PerformancePanel::selectDegree(int degreeIndex)
         onDegreeSelected(degreeIndex);
 }
 
-void PerformancePanel::selectScene(int sceneIndex)
-{
-    if (sceneIndex < 0 || sceneIndex > 3)
-        return;
-
-    performanceController.setScene(sceneIndex);
-
-    for (int i = 0; i < 4; ++i) {
-        if (i == sceneIndex) {
-            sceneButtons[static_cast<std::size_t>(i)].setColour(juce::TextButton::buttonColourId, colors::accent.withAlpha(0.12f));
-            sceneButtons[static_cast<std::size_t>(i)].setColour(juce::TextButton::textColourOnId, colors::accent);
-            sceneButtons[static_cast<std::size_t>(i)].setColour(juce::TextButton::textColourOffId, colors::accent);
-        } else {
-            sceneButtons[static_cast<std::size_t>(i)].setColour(juce::TextButton::buttonColourId, colors::panelSecondary);
-            sceneButtons[static_cast<std::size_t>(i)].setColour(juce::TextButton::textColourOnId, colors::textMuted);
-            sceneButtons[static_cast<std::size_t>(i)].setColour(juce::TextButton::textColourOffId, colors::textMuted);
-        }
-    }
-
-    updateChordKeys();
-
-    auto active = performanceController.getActiveChord();
-    if (active.has_value()) {
-        const auto& chord = voicer.voiceChord(
-            performanceController.getTonic(),
-            active->degree,
-            resolvedSpec(
-                config, performanceController, performanceController.getScene(), active->degree),
-            performanceController.getScale());
-
-        juce::String notesStr;
-        for (int n = 0; n < chord.notes.size(); ++n) {
-            if (n > 0) notesStr << "  ";
-            int midiVal = chord.notes[static_cast<std::size_t>(n)];
-            static constexpr const char* pNames[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
-            int pc = ((midiVal % 12) + 12) % 12;
-            int oct = (midiVal / 12) - 1;
-            notesStr << pNames[pc] << oct;
-        }
-        setHeldChordDisplay(utf8(degreeRomanLabel(performanceController.getScale(), active->degree)) + utf8(" \xc2\xb7 ") + chord.label, notesStr);
-    }
-
-    if (onSceneSelected)
-        onSceneSelected(sceneIndex);
-}
-
-void PerformancePanel::handleSceneButtonClicked(int sceneIndex)
-{
-    selectScene(sceneIndex);
-}
-
 void PerformancePanel::updateChordKeys()
 {
     const int tonic = performanceController.getTonic();
-    const int currentScene = performanceController.getScene();
 
     for (int deg = 0; deg < 7; ++deg) {
-        const auto spec = resolvedSpec(config, performanceController, currentScene, deg);
+        const auto spec = resolvedSpec(config, performanceController, deg);
         const auto chord = voicer.voiceChord(tonic, deg, spec, performanceController.getScale());
 
         auto& key = chordKeys[static_cast<std::size_t>(deg)];
@@ -255,7 +184,7 @@ void PerformancePanel::paint(juce::Graphics& g)
     g.setColour(colors::line);
     g.drawRoundedRectangle(bounds, 14.0f, 1.0f);
 
-    // Separator line between header and scene strip
+    // Separator line under header
     g.setColour(colors::line);
     g.drawLine(0.0f, 54.0f, bounds.getWidth(), 54.0f, 1.0f);
 }
@@ -273,18 +202,7 @@ void PerformancePanel::resized()
     nowChordLabel.setBounds(headerArea.removeFromLeft(140));
     nowNotesLabel.setBounds(headerArea);
 
-    // 2. Scene strip (44 px high)
-    auto sceneArea = bounds.removeFromTop(44).reduced(14, 4);
-    int sceneWidth = (sceneArea.getWidth() - (3 * 8)) / 4;
-    for (int i = 0; i < 4; ++i) {
-        sceneButtons[static_cast<std::size_t>(i)].setBounds(
-            sceneArea.getX() + i * (sceneWidth + 8),
-            sceneArea.getY(),
-            sceneWidth,
-            sceneArea.getHeight());
-    }
-
-    // 3. Chord keys (occupies remaining height)
+    // 2. Chord keys (occupies recovered vertical area)
     auto keysArea = bounds.reduced(14, 10);
     int keyWidth = (keysArea.getWidth() - (6 * 8)) / 7;
     for (int i = 0; i < 7; ++i) {
@@ -296,21 +214,8 @@ void PerformancePanel::resized()
     }
 }
 
-bool PerformancePanel::keyPressed(const juce::KeyPress& key)
+bool PerformancePanel::keyPressed(const juce::KeyPress& /*key*/)
 {
-    // If a subcomponent or text editor has focus, do not swallow shortcuts
-    auto* focusComp = juce::Component::getCurrentlyFocusedComponent();
-    if (focusComp != nullptr && (dynamic_cast<juce::TextEditor*>(focusComp) != nullptr || dynamic_cast<juce::ComboBox*>(focusComp) != nullptr)) {
-        return false;
-    }
-
-    // Scene switching with '1'..'4'
-    auto keyChar = static_cast<char>(key.getKeyCode());
-    if (keyChar >= '1' && keyChar <= '4') {
-        selectScene(keyChar - '1');
-        return true;
-    }
-
     return false;
 }
 

@@ -17,13 +17,12 @@ void MidiPerformanceMapper::setContext(const Context& newContext) noexcept {
     const bool tonicChanged = (context.tonic != normalizedTonic);
     const bool scaleChanged = (context.scale != newContext.scale);
     const bool diatonicChanged = (context.diatonicMode != newContext.diatonicMode);
-    const bool sceneChanged = (context.sceneIndex != newContext.sceneIndex);
     const bool paletteChanged = (context.palette != newContext.palette);
 
     context = newContext;
     context.tonic = normalizedTonic;
 
-    if (tonicChanged || scaleChanged || diatonicChanged || sceneChanged || paletteChanged) {
+    if (tonicChanged || scaleChanged || diatonicChanged || paletteChanged) {
         // If context changes out-of-band while playing, we reset transform state
         activeTransformSlot.reset();
     }
@@ -48,7 +47,7 @@ music::RealtimeVoicedChord MidiPerformanceMapper::computeCurrentVoicing(int degr
         : std::nullopt;
     const auto spec = resolvePerformanceVoicingSpec(
         config,
-        {.scale = context.scale, .diatonicMode = context.diatonicMode, .sceneIndex = context.sceneIndex},
+        {.scale = context.scale, .diatonicMode = context.diatonicMode},
         degree,
         transform);
     auto voiced = voicer.voiceChordRealtime(context.tonic, degree, spec, context.scale);
